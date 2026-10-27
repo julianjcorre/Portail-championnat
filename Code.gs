@@ -144,29 +144,10 @@ function importerCalendrier() {
   var tz = ss.getSpreadsheetTimeZone();
   var sheet = ss.getSheetByName(ONGLET_RENCONTRES);
   var aujourdhui = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
-
   var cle = function (date, equipe) { return date + '|' + equipe; };
-  var lignes = lireLignes_(ONGLET_RENCONTRES);
-  var existantes = {};
-  lignes.forEach(function (l, i) {
-    if (l[1] instanceof Date) existantes[cle(Utilities.formatDate(l[1], tz, 'yyyy-MM-dd'), String(l[3]).trim())] = i + 2;
-  });
 
-  var ajoutees = 0, misesAJour = 0, attendues = {};
-  CALENDRIER.forEach(function (r) {
-    var date = r[0], equipe = r[1], lieu = r[2], adversaire = r[3];
-    attendues[cle(date, equipe)] = true;
-    if (date < aujourdhui) return;
-    var ligne = existantes[cle(date, equipe)];
-    if (ligne) {
-      sheet.getRange(ligne, 5, 1, 2).setValues([[adversaire, lieu]]);
-      misesAJour++;
-    } else {
-      var p = date.split('-');
-      sheet.appendRow([nouvelId_(), new Date(+p[0], +p[1] - 1, +p[2]), '', equipe, adversaire, lieu, 'En attente', '']);
-      ajoutees++;
-    }
-  });
+  var resultat = ajouterCalendrier_();
+  var ajoutees = resultat.ajoutees, misesAJour = resultat.misesAJour, attendues = resultat.attendues;
 
   // Rencontres à venir qui ne figurent pas au calendrier (exemples, dates provisoires…).
   var enTrop = [];
@@ -193,6 +174,86 @@ function importerCalendrier() {
 
   ui.alert('Calendrier importé : ' + ajoutees + ' rencontre(s) ajoutée(s), ' + misesAJour + ' mise(s) à jour, ' +
     supprimees + ' supprimée(s).\n\nPassez le statut à « Validée » à réception des convocations.');
+}
+
+/**
+ * Ajoute les rencontres à venir du CALENDRIER absentes de l'onglet Rencontres
+ * (même date + même équipe) et met à jour adversaire et lieu des autres.
+ * Ne touche ni à l'heure, ni au statut, ni aux infos, ni aux réponses.
+ */
+function ajouterCalendrier_() {
+  var ss = SpreadsheetApp.getActive();
+  var tz = ss.getSpreadsheetTimeZone();
+  var sheet = ss.getSheetByName(ONGLET_RENCONTRES);
+  var aujourdhui = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  var cle = function (date, equipe) { return date + '|' + equipe; };
+
+  var existantes = {};
+  lireLignes_(ONGLET_RENCONTRES).forEach(function (l, i) {
+    if (l[1] instanceof Date) existantes[cle(Utilities.formatDate(l[1], tz, 'yyyy-MM-dd'), String(l[3]).trim())] = i + 2;
+  });
+
+  var ajoutees = 0, misesAJour = 0, attendues = {};
+  CALENDRIER.forEach(function (r) {
+    var date = r[0], equipe = r[1], lieu = r[2], adversaire = r[3];
+    attendues[cle(date, equipe)] = true;
+    if (date < aujourdhui) return;
+    var ligne = existantes[cle(date, equipe)];
+    if (ligne) {
+      sheet.getRange(ligne, 5, 1, 2).setValues([[adversaire, lieu]]);
+      misesAJour++;
+    } else {
+      var p = date.split('-');
+      sheet.appendRow([nouvelId_(), new Date(+p[0], +p[1] - 1, +p[2]), '', equipe, adversaire, lieu, 'En attente', '']);
+      ajoutees++;
+    }
+  });
+  return { ajoutees: ajoutees, misesAJour: misesAJour, attendues: attendues };
+}
+
+var EXEMPLES = ['TC Exemple', 'AS Exemple', 'US Exemple'];
+
+/**
+ * Au premier chargement de la page après sa mise en ligne : importe le
+ * calendrier officiel et retire les rencontres d'exemple (avec leurs réponses).
+ * Ne s'exécute qu'une fois (propriété du script).
+ */
+function importerCalendrierUneFois_() {
+  var props = PropertiesService.getScriptProperties();
+  var CLE = 'calendrier_2026_2027_importe';
+  if (props.getProperty(CLE)) return;
+
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(20000);
+  try {
+    if (props.getProperty(CLE)) return;
+    ajouterCalendrier_();
+
+    var ss = SpreadsheetApp.getActive();
+    var sheet = ss.getSheetByName(ONGLET_RENCONTRES);
+    var idsExemples = [];
+    lireLignes_(ONGLET_RENCONTRES)
+      .map(function (l, i) {
+        if (EXEMPLES.indexOf(String(l[4]).trim()) === -1) return 0;
+        idsExemples.push(String(l[0]));
+        return i + 2;
+      })
+      .filter(Boolean).reverse()
+      .forEach(function (n) { sheet.deleteRow(n); });
+
+    var reponses = ss.getSheetByName(ONGLET_REPONSES);
+    lireLignes_(ONGLET_REPONSES)
+      .map(function (l, i) { return idsExemples.indexOf(String(l[0])) !== -1 ? i + 2 : 0; })
+      .filter(Boolean).reverse()
+      .forEach(function (n) { reponses.deleteRow(n); });
+
+    var derniere = sheet.getLastRow();
+    if (derniere > 2) sheet.getRange(2, 1, derniere - 1, sheet.getLastColumn()).sort([{ column: 2 }, { column: 4 }]);
+    SpreadsheetApp.flush();
+    props.setProperty(CLE, new Date().toISOString());
+  } finally {
+    verrou.releaseLock();
+  }
 }
 
 /**
@@ -406,6 +467,7 @@ function doGet(e) {
  * et réponses déjà données.
  */
 function getDonnees() {
+  importerCalendrierUneFois_();
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone();
 
