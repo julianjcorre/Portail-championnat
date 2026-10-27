@@ -225,6 +225,9 @@
     .etapes li { margin-bottom: 10px; }
     .compo { background: var(--fond); border-radius: 10px; padding: 8px 10px; font-size: 14px; margin: 8px 0; }
     .compo b { color: var(--texte); }
+    .terrains { border-radius: 10px; padding: 8px 10px; font-size: 15px; margin: 8px 0; }
+    .terrains.terrains-2 { background: var(--vert-clair); color: var(--vert); }
+    .terrains.terrains-1 { background: var(--orange-clair); color: var(--orange); }
     .ordre { list-style: none; margin: 4px 0 6px; padding: 0; }
     .ordre li { padding: 2px 0; }
     .ordre li span { display: inline-block; min-width: 34px; font-weight: 700; color: var(--doux); }
@@ -403,6 +406,12 @@
     function badgeTerrains(r) {
       return r.terrains ? '<span class="badge">🎾 ' + r.terrains + ' terrain' + (r.terrains === '2' ? 's' : '') + '</span>' : '';
     }
+    /** Message rassurant (2 terrains) ou d'avertissement (1 terrain) sur la durée de la journée. */
+    function messageTerrains(r) {
+      if (r.terrains === '2') return '<div class="terrains terrains-2">🎾 <b>2 terrains</b> : les matchs se jouent en parallèle, la journée sera plus courte.</div>';
+      if (r.terrains === '1') return '<div class="terrains terrains-1">🎾 <b>1 seul terrain</b> : les matchs s\'enchaînent, prévois la journée.</div>';
+      return '';
+    }
     function badgeLieu(r) {
       var texte = r.lieu === 'Domicile' ? '🏠 Domicile' : r.lieu === 'Extérieur' ? '🚗 Extérieur' : '📍 Lieu à venir';
       return '<span class="badge">' + texte + '</span>';
@@ -573,7 +582,8 @@
       return '<div class="rencontre">' +
         '<div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
         '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
-        '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + badgeTerrains(r) + '</div>' +
+        '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+        messageTerrains(r) +
         (r.infos ? '<div class="infos">' + esc(r.infos) + '</div>' : '') +
         blocComposition(r) +
         '<div class="boutons">' +
