@@ -30,6 +30,10 @@ var CAPITAINES = [
 
 var NOM_CLUB = 'TC Bazoges';
 
+// Adresse de la page des joueurs hébergée sur GitHub Pages (vide = page Apps Script).
+// Les liens de connexion des capitaines pointent vers cette adresse.
+var URL_PAGE = '';
+
 // ---------------------------------------------------------------------------
 // Structure de la Sheet (ne pas modifier sans adapter le reste du code)
 // ---------------------------------------------------------------------------
@@ -385,7 +389,7 @@ function demanderLienCapitaine(adresse) {
 
   var jeton = Utilities.getUuid();
   props.setProperty('jeton_' + jeton, JSON.stringify({ email: email, expire: Date.now() + DUREE_JETON_JOURS * 86400000 }));
-  var lien = ScriptApp.getService().getUrl() + '?capitaine=' + jeton;
+  var lien = (URL_PAGE || ScriptApp.getService().getUrl()) + '?capitaine=' + jeton;
   MailApp.sendEmail({
     to: email,
     subject: NOM_CLUB + ' – Connexion à l\'espace capitaines',
@@ -550,6 +554,38 @@ function doGet(e) {
   return page.evaluate()
     .setTitle(NOM_CLUB + ' – Championnat')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * Porte d'entrée pour la page hébergée hors de Google (GitHub Pages) :
+ * corps JSON { fn, args }, réponse JSON { ok, result } ou { ok: false, error }.
+ * Seules les fonctions listées ici sont appelables.
+ */
+function doPost(e) {
+  var fonctions = {
+    getDonnees: getDonnees,
+    repondre: repondre,
+    inscrire: inscrire,
+    demanderLienCapitaine: demanderLienCapitaine,
+    infoCapitaine: infoCapitaine,
+    deconnecterCapitaine: deconnecterCapitaine,
+    getDonneesCapitaines: getDonneesCapitaines,
+    enregistrerRencontre: enregistrerRencontre,
+    supprimerRencontre: supprimerRencontre,
+    renommerJoueur: renommerJoueur,
+    supprimerJoueur: supprimerJoueur,
+  };
+  var sortie;
+  try {
+    var demande = JSON.parse(e.postData.contents);
+    var fonction = Object.prototype.hasOwnProperty.call(fonctions, demande.fn) ? fonctions[demande.fn] : null;
+    if (!fonction) throw new Error('Fonction inconnue.');
+    var resultat = fonction.apply(null, Array.isArray(demande.args) ? demande.args : []);
+    sortie = { ok: true, result: resultat === undefined ? null : resultat };
+  } catch (err) {
+    sortie = { ok: false, error: err && err.message ? err.message : String(err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(sortie)).setMimeType(ContentService.MimeType.JSON);
 }
 
 /**
