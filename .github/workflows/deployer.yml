@@ -12,7 +12,7 @@ on:
 # Identifiants du projet Apps Script (pas secrets : l'ID de déploiement figure dans l'URL publique).
 env:
   SCRIPT_ID: 1lIi5_dYHk-9ij1H6QhYfyYkGlE8aBEsTzdLZfdQ86XkmvJOQrmHeF_eF  # Paramètres du projet → ID du script
-  DEPLOYMENT_ID: A_REMPLIR  # Gérer les déploiements → ID de déploiement (garde la même URL)
+  DEPLOYMENT_ID: AKfycbw6zkDi717zVCuxSCE4YUY7KYUMTSJroeg_sjgdOOa3m1MFUf7jbcJBKdRbhFOrDKZd5g  # Gérer les déploiements → ID de déploiement (garde la même URL)
 
 concurrency:
   group: deploiement-apps-script
