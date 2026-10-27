@@ -228,6 +228,11 @@
     .terrains { border-radius: 10px; padding: 8px 10px; font-size: 15px; margin: 8px 0; }
     .terrains.terrains-2 { background: var(--vert-clair); color: var(--vert); }
     .terrains.terrains-1 { background: var(--orange-clair); color: var(--orange); }
+    .agenda {
+      display: inline-flex; align-items: center; min-height: 40px; margin: 6px 0 2px 6px; padding: 0 12px; border-radius: 999px;
+      border: 2px solid var(--ligne); background: var(--carte); color: var(--texte); font-weight: 600; font-size: 14px;
+      font-family: inherit; text-decoration: none; cursor: pointer; vertical-align: middle;
+    }
     .ordre { list-style: none; margin: 4px 0 6px; padding: 0; }
     .ordre li { padding: 2px 0; }
     .ordre li span { display: inline-block; min-width: 34px; font-weight: 700; color: var(--doux); }
@@ -298,6 +303,9 @@
       });
       return appel;
     }
+
+    // Lieu des matchs à domicile dans l'agenda (mettre l'adresse complète pour le GPS).
+    var ADRESSE_CLUB = 'TC Bazogeais';
 
     var CLE_NOM = 'tcb-championnat-nom';
     var donnees = null;
@@ -608,11 +616,71 @@
       var monRole = selectionDe(r.id)[moi];
       var badge = !monRole ? '' : monRole === 'Remplaçant' ? '🔄 Tu es remplaçant' :
         /^N°\d$/.test(monRole) ? '🏆 Tu joues en n°' + monRole.slice(2) : '🏆 Tu es retenu dans l\'équipe';
-      return (badge ? '<div class="retenu">' + badge + '</div>' : '') +
+      return (badge ? '<div class="retenu">' + badge + '</div>' + boutonAgenda(r, monRole) : '') +
         '<div class="compo"><b>🏆 Ordre de jeu (simples) :</b>' + (t.length ? '<ol class="ordre">' + t.map(function (x) {
           return '<li' + (x.nom === moi ? ' class="moi-compo"' : '') + '><span>' + esc(x.n ? 'n°' + x.n : '•') + '</span> ' + esc(x.nom) + '</li>';
         }).join('') + '</ol>' : ' à venir') +
         (rp.length ? '<b>🔄 Remplaçant' + (rp.length > 1 ? 's' : '') + ' :</b> ' + esc(rp.join(', ')) : '') + '</div>';
+    }
+
+    // ======================= Agenda =======================
+
+    function deuxChiffres(n) { return (n < 10 ? '0' : '') + n; }
+    /** Début / fin de l'évènement : à l'heure du match pour 4 h, sinon journée entière. */
+    function horairesMatch(r) {
+      var p = r.date.split('-'), m = /^(\d{2}):(\d{2})$/.exec(r.heure || '');
+      var jour = p[0] + p[1] + p[2];
+      if (!m) {
+        var lendemain = new Date(+p[0], +p[1] - 1, +p[2] + 1);
+        return { journee: true, debut: jour, fin: lendemain.getFullYear() + deuxChiffres(lendemain.getMonth() + 1) + deuxChiffres(lendemain.getDate()) };
+      }
+      var fin = new Date(+p[0], +p[1] - 1, +p[2], +m[1] + 4, +m[2]);
+      return {
+        journee: false,
+        debut: jour + 'T' + m[1] + m[2] + '00',
+        fin: fin.getFullYear() + deuxChiffres(fin.getMonth() + 1) + deuxChiffres(fin.getDate()) + 'T' + deuxChiffres(fin.getHours()) + deuxChiffres(fin.getMinutes()) + '00',
+      };
+    }
+    function infosAgenda(r, role) {
+      var place = role === 'Remplaçant' ? 'remplaçant' : /^N°\d$/.test(role) ? 'n°' + role.slice(2) : '';
+      return {
+        titre: '🎾 ' + r.equipe + ' – ' + (r.adversaire || 'adversaire à venir') + (place ? ' (' + place + ')' : ''),
+        lieu: r.lieu === 'Domicile' ? ADRESSE_CLUB : r.lieu === 'Extérieur' ? (r.adversaire || '') : '',
+        details: (r.infos ? r.infos + '\n' : '') + 'Portail championnat : ' + (surAppsScript ? URL_API : location.origin + location.pathname),
+      };
+    }
+    function lienGoogleAgenda(r, role) {
+      var h = horairesMatch(r), i = infosAgenda(r, role);
+      return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+        '&text=' + encodeURIComponent(i.titre) + '&dates=' + h.debut + '/' + h.fin + '&ctz=Europe/Paris' +
+        '&location=' + encodeURIComponent(i.lieu) + '&details=' + encodeURIComponent(i.details);
+    }
+    /** Fichier .ics (iPhone : proposé directement à l'app Calendrier). */
+    function fichierAgenda(r, role) {
+      var h = horairesMatch(r), i = infosAgenda(r, role);
+      var echap = function (t) { return String(t).replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); };
+      var maintenant = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+      var lignes = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//TC Bazogeais//Portail championnat//FR', 'BEGIN:VEVENT',
+        'UID:' + r.id + '@tcbazogeais.github.io', 'DTSTAMP:' + maintenant,
+        h.journee ? 'DTSTART;VALUE=DATE:' + h.debut : 'DTSTART;TZID=Europe/Paris:' + h.debut,
+        h.journee ? 'DTEND;VALUE=DATE:' + h.fin : 'DTEND;TZID=Europe/Paris:' + h.fin,
+        'SUMMARY:' + echap(i.titre), 'LOCATION:' + echap(i.lieu), 'DESCRIPTION:' + echap(i.details),
+        'END:VEVENT', 'END:VCALENDAR'];
+      return lignes.join('\r\n');
+    }
+    function boutonAgenda(r, role) {
+      if (surIphone()) return '<button class="agenda" data-agenda="' + esc(r.id) + '">📅 Ajouter à mon agenda</button>';
+      return '<a class="agenda" href="' + esc(lienGoogleAgenda(r, role)) + '" target="_blank" rel="noopener">📅 Ajouter à mon agenda</a>';
+    }
+    function telechargerAgenda(id) {
+      var r = donnees.rencontres.filter(function (x) { return x.id === id; })[0];
+      if (!r) return;
+      var lien = document.createElement('a');
+      lien.href = URL.createObjectURL(new Blob([fichierAgenda(r, selectionDe(r.id)[moi])], { type: 'text/calendar' }));
+      lien.download = 'match-' + r.date + '.ics';
+      document.body.appendChild(lien);
+      lien.click();
+      setTimeout(function () { URL.revokeObjectURL(lien.href); document.body.removeChild(lien); }, 1000);
     }
 
     /** Joueurs retenus dans l'ordre de jeu : [{ n: 1, nom }, …] (ancien rôle « Titulaire » en fin, sans numéro). */
@@ -1078,6 +1146,8 @@
           messageCap = 'Rencontre du ' + dateDansPhrase(supprimee.date) + ' supprimée.';
           vue = 'cap-gerer';
         });
+      } else if (cible.hasAttribute('data-agenda')) {
+        telechargerAgenda(cible.getAttribute('data-agenda'));
       } else if (cible.id === 'installer') {
         installer();
       } else if (cible.id === 'installer-direct') {
