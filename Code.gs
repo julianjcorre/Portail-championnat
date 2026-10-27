@@ -1,0 +1,290 @@
+/**
+ * TC Bazoges – Portail championnat
+ *
+ * Page web (Apps Script) qui affiche les rencontres de championnat
+ * et récolte les présences des joueurs. Toutes les données vivent
+ * dans la Google Sheet à laquelle ce script est lié.
+ */
+
+// ---------------------------------------------------------------------------
+// Réglages
+// ---------------------------------------------------------------------------
+
+var NB_TERRAINS = 2;
+// Au-delà de ce nombre de rencontres à domicile le même jour, la page affiche une alerte.
+var MAX_DOMICILE_PAR_JOUR = 1;
+var EQUIPES = ['Hommes 1', 'Hommes 2', 'Femmes'];
+
+var NOM_CLUB = 'TC Bazoges';
+
+// ---------------------------------------------------------------------------
+// Structure de la Sheet (ne pas modifier sans adapter le reste du code)
+// ---------------------------------------------------------------------------
+
+var ONGLET_RENCONTRES = 'Rencontres';
+var ONGLET_JOUEURS = 'Joueurs';
+var ONGLET_REPONSES = 'Réponses';
+
+var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos'];
+var ENTETES_JOUEURS = ['Nom', 'Équipe(s)'];
+var ENTETES_REPONSES = ['ID rencontre', 'Nom', 'Réponse', 'Répondu le'];
+
+var LIEUX = ['Domicile', 'Extérieur'];
+var STATUTS = ['Validée', 'En attente'];
+var REPONSES = ['Présent', 'Absent'];
+
+// ---------------------------------------------------------------------------
+// Menu dans la Sheet
+// ---------------------------------------------------------------------------
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('🎾 ' + NOM_CLUB)
+    .addItem('Installer les onglets', 'installerOnglets')
+    .addItem('Ouvrir la page des joueurs', 'afficherLienPage')
+    .addToUi();
+}
+
+/**
+ * Crée les onglets manquants avec leurs en-têtes, leurs listes déroulantes
+ * et quelques exemples. Ne touche pas aux onglets qui existent déjà.
+ */
+function installerOnglets() {
+  var ss = SpreadsheetApp.getActive();
+  var dansUneSemaine = new Date();
+  dansUneSemaine.setDate(dansUneSemaine.getDate() + 7);
+
+  var rencontres = ss.getSheetByName(ONGLET_RENCONTRES);
+  if (!rencontres) {
+    rencontres = ss.insertSheet(ONGLET_RENCONTRES);
+    preparerEntetes_(rencontres, ENTETES_RENCONTRES);
+    rencontres.getRange('B:B').setNumberFormat('dd/mm/yyyy');
+    rencontres.getRange('C:C').setNumberFormat('@');
+    rencontres.getRange(2, 1, 3, ENTETES_RENCONTRES.length).setValues([
+      [nouvelId_(), dansUneSemaine, '09:00', 'Hommes 1', 'TC Exemple', 'Domicile', 'Validée', 'RDV 8h30 au club'],
+      [nouvelId_(), dansUneSemaine, '14:00', 'Hommes 2', 'AS Exemple', 'Domicile', 'En attente', ''],
+      [nouvelId_(), dansUneSemaine, '09:00', 'Femmes', 'US Exemple', 'Extérieur', 'Validée', 'Covoiturage 8h devant la mairie'],
+    ]);
+    ajouterListe_(rencontres, 'D2:D', EQUIPES);
+    ajouterListe_(rencontres, 'F2:F', LIEUX);
+    ajouterListe_(rencontres, 'G2:G', STATUTS);
+    rencontres.hideColumns(1);
+  }
+
+  var joueurs = ss.getSheetByName(ONGLET_JOUEURS);
+  if (!joueurs) {
+    joueurs = ss.insertSheet(ONGLET_JOUEURS);
+    preparerEntetes_(joueurs, ENTETES_JOUEURS);
+    joueurs.getRange(2, 1, 4, 2).setValues([
+      ['Julien', 'Hommes 1'],
+      ['Thomas G.', 'Hommes 1, Hommes 2'],
+      ['Marc', 'Hommes 2'],
+      ['Claire', 'Femmes'],
+    ]);
+  }
+
+  var reponses = ss.getSheetByName(ONGLET_REPONSES);
+  if (!reponses) {
+    reponses = ss.insertSheet(ONGLET_REPONSES);
+    preparerEntetes_(reponses, ENTETES_REPONSES);
+    reponses.getRange('D:D').setNumberFormat('dd/mm/yyyy hh:mm');
+    reponses.getRange(1, 1, 1, ENTETES_REPONSES.length)
+      .setNote('Onglet rempli automatiquement par la page web. Ne pas modifier.');
+  }
+
+  SpreadsheetApp.getUi().alert(
+    'Onglets prêts. Remplacez les exemples dans « ' + ONGLET_RENCONTRES + ' » et « ' + ONGLET_JOUEURS + ' ».\n\n' +
+    'La colonne ID (cachée) se remplit toute seule : ne pas la modifier.'
+  );
+}
+
+function afficherLienPage() {
+  var url = ScriptApp.getService().getUrl();
+  var ui = SpreadsheetApp.getUi();
+  if (!url) {
+    ui.alert('La page n\'est pas encore déployée : Extensions → Apps Script → Déployer → Nouveau déploiement → Application Web.');
+    return;
+  }
+  ui.alert('Lien à épingler dans les groupes WhatsApp :\n\n' + url);
+}
+
+function preparerEntetes_(sheet, entetes) {
+  sheet.getRange(1, 1, 1, entetes.length).setValues([entetes]).setFontWeight('bold');
+  sheet.setFrozenRows(1);
+}
+
+function ajouterListe_(sheet, a1, valeurs) {
+  var regle = SpreadsheetApp.newDataValidation().requireValueInList(valeurs, true).build();
+  sheet.getRange(a1).setDataValidation(regle);
+}
+
+function nouvelId_() {
+  return Utilities.getUuid().slice(0, 8);
+}
+
+// ---------------------------------------------------------------------------
+// Page web
+// ---------------------------------------------------------------------------
+
+function doGet() {
+  var page = HtmlService.createTemplateFromFile('Index');
+  page.nomClub = NOM_CLUB;
+  return page.evaluate()
+    .setTitle(NOM_CLUB + ' – Championnat')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * Données envoyées à la page : joueurs, rencontres à venir (à partir d'hier)
+ * et réponses déjà données.
+ */
+function getDonnees() {
+  var ss = SpreadsheetApp.getActive();
+  var tz = ss.getSpreadsheetTimeZone();
+
+  var joueurs = lireLignes_(ONGLET_JOUEURS)
+    .filter(function (l) { return String(l[0]).trim(); })
+    .map(function (l) {
+      return {
+        nom: String(l[0]).trim(),
+        equipes: String(l[1]).split(',').map(function (e) { return e.trim(); }).filter(String),
+      };
+    })
+    .sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
+
+  var hier = new Date();
+  hier.setDate(hier.getDate() - 1);
+  var depuis = Utilities.formatDate(hier, tz, 'yyyy-MM-dd');
+
+  var lignes = completerIds_();
+  // L'heure est lue telle qu'affichée : les cellules au format heure sont
+  // décalées de quelques minutes si on passe par un objet Date.
+  var heures = lignes.length
+    ? ss.getSheetByName(ONGLET_RENCONTRES).getRange(2, 3, lignes.length, 1).getDisplayValues()
+    : [];
+
+  var rencontres = lignes
+    .map(function (l, i) { return { ligne: l, heure: heures[i][0] }; })
+    .filter(function (x) { return x.ligne[1] instanceof Date; })
+    .map(function (x) {
+      var l = x.ligne;
+      return {
+        id: String(l[0]),
+        date: Utilities.formatDate(l[1], tz, 'yyyy-MM-dd'),
+        heure: formaterHeure_(x.heure),
+        equipe: String(l[3]).trim(),
+        adversaire: String(l[4]).trim(),
+        lieu: String(l[5]).trim(),
+        statut: String(l[6]).trim() === 'Validée' ? 'Validée' : 'En attente',
+        infos: String(l[7]).trim(),
+      };
+    })
+    .filter(function (r) { return r.date >= depuis; })
+    .sort(function (a, b) {
+      return (a.date + a.heure + a.equipe).localeCompare(b.date + b.heure + b.equipe);
+    });
+
+  return {
+    equipes: EQUIPES,
+    nbTerrains: NB_TERRAINS,
+    maxDomicileParJour: MAX_DOMICILE_PAR_JOUR,
+    joueurs: joueurs,
+    rencontres: rencontres,
+    reponses: lireReponses_(),
+  };
+}
+
+/**
+ * Enregistre la réponse d'un joueur à une rencontre.
+ * reponse : 'Présent', 'Absent', ou '' pour annuler.
+ * Renvoie les réponses à jour de toutes les rencontres.
+ */
+function repondre(idRencontre, nom, reponse) {
+  if (reponse && REPONSES.indexOf(reponse) === -1) throw new Error('Réponse inconnue.');
+
+  var nomsConnus = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
+  if (nomsConnus.indexOf(nom) === -1) throw new Error('Joueur inconnu : ' + nom);
+
+  var idsConnus = lireLignes_(ONGLET_RENCONTRES).map(function (l) { return String(l[0]); });
+  if (idsConnus.indexOf(idRencontre) === -1) throw new Error('Rencontre introuvable. Rechargez la page.');
+
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_REPONSES);
+    var lignes = lireLignes_(ONGLET_REPONSES);
+    var index = -1;
+    for (var i = 0; i < lignes.length; i++) {
+      if (String(lignes[i][0]) === idRencontre && String(lignes[i][1]) === nom) { index = i; break; }
+    }
+    if (!reponse) {
+      if (index !== -1) sheet.deleteRow(index + 2);
+    } else if (index !== -1) {
+      sheet.getRange(index + 2, 3, 1, 2).setValues([[reponse, new Date()]]);
+    } else {
+      sheet.appendRow([idRencontre, nom, reponse, new Date()]);
+    }
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return lireReponses_();
+}
+
+// ---------------------------------------------------------------------------
+// Lecture de la Sheet
+// ---------------------------------------------------------------------------
+
+/** Lignes de données d'un onglet (sans l'en-tête). */
+function lireLignes_(nomOnglet) {
+  var sheet = SpreadsheetApp.getActive().getSheetByName(nomOnglet);
+  if (!sheet) throw new Error('Onglet « ' + nomOnglet + ' » introuvable. Menu 🎾 → Installer les onglets.');
+  var derniere = sheet.getLastRow();
+  if (derniere < 2) return [];
+  return sheet.getRange(2, 1, derniere - 1, sheet.getLastColumn()).getValues();
+}
+
+/** Donne un ID aux rencontres saisies sans ID, puis renvoie toutes les lignes. */
+function completerIds_() {
+  var lignes = lireLignes_(ONGLET_RENCONTRES);
+  var manquants = false;
+  lignes.forEach(function (l) {
+    if (!String(l[0]).trim() && l[1]) { l[0] = nouvelId_(); manquants = true; }
+  });
+  if (manquants) {
+    var verrou = LockService.getScriptLock();
+    verrou.waitLock(10000);
+    try {
+      var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_RENCONTRES);
+      // Relecture sous verrou pour ne pas écraser un ID posé entre-temps.
+      var ids = sheet.getRange(2, 1, lignes.length, 1).getValues();
+      ids.forEach(function (cellule, i) {
+        if (String(cellule[0]).trim()) lignes[i][0] = cellule[0];
+        else cellule[0] = lignes[i][0];
+      });
+      sheet.getRange(2, 1, ids.length, 1).setValues(ids);
+    } finally {
+      verrou.releaseLock();
+    }
+  }
+  return lignes;
+}
+
+/** { idRencontre: { nom: 'Présent' | 'Absent' } } */
+function lireReponses_() {
+  var reponses = {};
+  lireLignes_(ONGLET_REPONSES).forEach(function (l) {
+    var id = String(l[0]);
+    if (!id) return;
+    reponses[id] = reponses[id] || {};
+    reponses[id][String(l[1])] = String(l[2]);
+  });
+  return reponses;
+}
+
+/** « 9h », « 9h30 », « 09:30:00 » → « 09:00 », « 09:30 ». Laisse le reste tel quel. */
+function formaterHeure_(texte) {
+  var m = String(texte).trim().match(/^(\d{1,2})\s*[h:]\s*(\d{2})?/i);
+  if (!m) return String(texte).trim();
+  return ('0' + m[1]).slice(-2) + ':' + (m[2] || '00');
+}

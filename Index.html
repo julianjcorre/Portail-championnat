@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --fond: #f4f6f3;
+      --carte: #ffffff;
+      --texte: #1d2a22;
+      --doux: #5d6b62;
+      --ligne: #dde3dd;
+      --vert: #1f7a45;
+      --vert-clair: #e2f3e8;
+      --rouge: #c0392b;
+      --rouge-clair: #fbe7e4;
+      --orange: #a8640a;
+      --orange-clair: #fdf1dc;
+      --accent: #c9e02b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fond: #121714;
+        --carte: #1c2420;
+        --texte: #e8eee9;
+        --doux: #a3b0a7;
+        --ligne: #2e3a33;
+        --vert: #4cc27c;
+        --vert-clair: #183324;
+        --rouge: #f07c6e;
+        --rouge-clair: #3a1d19;
+        --orange: #f0b45a;
+        --orange-clair: #3a2a12;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--fond);
+      color: var(--texte);
+      font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      background: var(--vert);
+      color: #fff;
+      padding: 14px 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    @media (prefers-color-scheme: dark) { header { background: #17402a; } }
+    .titre { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    h1 { font-size: 19px; margin: 0; }
+    .moi { font-size: 15px; opacity: .9; }
+    .moi button {
+      background: none; border: 0; color: inherit; text-decoration: underline;
+      font: inherit; padding: 4px 0; cursor: pointer;
+    }
+    nav { display: flex; margin-top: 10px; }
+    nav button {
+      flex: 1; background: none; border: 0; color: #fff; opacity: .75;
+      font-weight: 600; font-size: 16px; font-family: inherit; padding: 12px 0;
+      border-bottom: 3px solid transparent; cursor: pointer;
+    }
+    nav button.actif { opacity: 1; border-bottom-color: var(--accent); }
+    main { max-width: 640px; margin: 0 auto; padding: 16px; }
+    .carte {
+      background: var(--carte);
+      border: 1px solid var(--ligne);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .jour { font-weight: 700; margin: 0 0 2px; }
+    .ligne-info { color: var(--doux); font-size: 15px; }
+    .match { font-size: 18px; font-weight: 600; margin: 6px 0; }
+    .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .badge {
+      font-size: 13px; font-weight: 600; border-radius: 999px; padding: 3px 10px;
+      background: var(--fond); color: var(--doux);
+    }
+    .badge.validee { background: var(--vert-clair); color: var(--vert); }
+    .badge.attente { background: var(--orange-clair); color: var(--orange); }
+    .infos { background: var(--fond); border-radius: 8px; padding: 8px 10px; font-size: 15px; margin: 8px 0; }
+    .boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
+    .boutons button {
+      min-height: 56px; border-radius: 12px; font-weight: 700; font-size: 17px; font-family: inherit;
+      border: 2px solid var(--ligne); background: var(--carte); color: var(--texte); cursor: pointer;
+    }
+    .boutons button.oui.choisi { background: var(--vert); border-color: var(--vert); color: #fff; }
+    .boutons button.non.choisi { background: var(--rouge); border-color: var(--rouge); color: #fff; }
+    .boutons button:disabled { opacity: .6; }
+    .aide { font-size: 13px; color: var(--doux); text-align: center; }
+    details { margin-top: 8px; font-size: 15px; }
+    summary { cursor: pointer; color: var(--doux); padding: 4px 0; }
+    .liste { margin: 4px 0 0; padding-left: 4px; }
+    .liste b { display: inline-block; min-width: 130px; }
+    .alerte {
+      background: var(--rouge-clair); color: var(--rouge); font-weight: 600;
+      border-radius: 10px; padding: 10px 12px; margin: 8px 0;
+    }
+    .rencontre { border-top: 1px solid var(--ligne); padding: 10px 0; }
+    .rencontre:first-of-type { border-top: 0; }
+    .rencontre .match { font-size: 16px; margin: 2px 0; }
+    .compte { font-size: 14px; color: var(--doux); }
+    .qui h2 { margin: 4px 0 4px; font-size: 22px; }
+    .qui p { color: var(--doux); margin: 0 0 14px; }
+    .qui .equipe { font-weight: 700; margin: 16px 0 8px; }
+    .noms { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+    .noms button {
+      min-height: 52px; border-radius: 12px; border: 2px solid var(--ligne);
+      background: var(--carte); color: var(--texte); font-weight: 600; font-size: 17px; font-family: inherit; cursor: pointer;
+    }
+    .vide, .chargement { text-align: center; color: var(--doux); padding: 40px 0; }
+    .erreur {
+      position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 3;
+      background: var(--rouge); color: #fff; border-radius: 12px; padding: 12px 14px; font-weight: 600;
+    }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="titre">
+      <h1>🎾 <?= nomClub ?> – Championnat</h1>
+      <div class="moi" id="moi" hidden></div>
+    </div>
+    <nav id="onglets" hidden>
+      <button data-onglet="mes" class="actif">Mes matchs</button>
+      <button data-onglet="club">Tout le club</button>
+    </nav>
+  </header>
+
+  <main id="contenu"><div class="chargement">Chargement…</div></main>
+  <div class="erreur" id="erreur" hidden></div>
+
+  <script>
+    var CLE_NOM = 'tcb-championnat-nom';
+    var donnees = null;
+    var onglet = 'mes';
+    var enCours = {}; // rencontres dont la réponse part au serveur
+
+    // --- Mémoire du téléphone (peut être indisponible en navigation privée) ---
+    function lireNom() { try { return localStorage.getItem(CLE_NOM); } catch (e) { return null; } }
+    function ecrireNom(nom) {
+      try { nom ? localStorage.setItem(CLE_NOM, nom) : localStorage.removeItem(CLE_NOM); } catch (e) {}
+    }
+    var moi = lireNom();
+
+    // --- Outils ---
+    function esc(t) {
+      return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function dateLongue(iso) {
+      var p = iso.split('-');
+      var d = new Date(+p[0], +p[1] - 1, +p[2]);
+      var texte = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+      return texte.charAt(0).toUpperCase() + texte.slice(1);
+    }
+    function compte(n, singulier, pluriel) {
+      return n + ' ' + (n > 1 ? pluriel : singulier);
+    }
+    function joueur(nom) {
+      return donnees.joueurs.filter(function (j) { return j.nom === nom; })[0];
+    }
+    function joueursEquipe(equipe) {
+      return donnees.joueurs.filter(function (j) { return j.equipes.indexOf(equipe) !== -1; });
+    }
+    function reponseDe(id, nom) {
+      return (donnees.reponses[id] || {})[nom] || '';
+    }
+    function bilan(r) {
+      var presents = [], absents = [], sansReponse = [];
+      joueursEquipe(r.equipe).forEach(function (j) {
+        var rep = reponseDe(r.id, j.nom);
+        (rep === 'Présent' ? presents : rep === 'Absent' ? absents : sansReponse).push(j.nom);
+      });
+      return { presents: presents, absents: absents, sansReponse: sansReponse };
+    }
+    function afficherErreur(message) {
+      var el = document.getElementById('erreur');
+      el.textContent = message;
+      el.hidden = false;
+      clearTimeout(afficherErreur.t);
+      afficherErreur.t = setTimeout(function () { el.hidden = true; }, 5000);
+    }
+    function badgeStatut(r) {
+      return r.statut === 'Validée'
+        ? '<span class="badge validee">✅ Date validée</span>'
+        : '<span class="badge attente">⏳ En attente de convocation</span>';
+    }
+    function badgeLieu(r) {
+      return '<span class="badge">' + (r.lieu === 'Domicile' ? '🏠 Domicile' : '🚗 Extérieur') + '</span>';
+    }
+
+    // --- Écrans ---
+    function rendre() {
+      var contenu = document.getElementById('contenu');
+      var nav = document.getElementById('onglets');
+      var zoneMoi = document.getElementById('moi');
+
+      if (!donnees) return;
+
+      if (!moi || !joueur(moi)) {
+        moi = null;
+        nav.hidden = true;
+        zoneMoi.hidden = true;
+        contenu.innerHTML = ecranQui();
+        return;
+      }
+
+      nav.hidden = false;
+      zoneMoi.hidden = false;
+      zoneMoi.innerHTML = esc(moi) + ' · <button id="changer">changer</button>';
+      Array.prototype.forEach.call(nav.querySelectorAll('button'), function (b) {
+        b.classList.toggle('actif', b.getAttribute('data-onglet') === onglet);
+      });
+      contenu.innerHTML = onglet === 'mes' ? ecranMesMatchs() : ecranClub();
+    }
+
+    function ecranQui() {
+      var html = '<div class="qui"><h2>Qui es-tu ?</h2>' +
+        '<p>Touche ton prénom. Ton téléphone s\'en souviendra.</p>';
+      var dejaVus = {};
+      donnees.equipes.forEach(function (equipe) {
+        var js = joueursEquipe(equipe).filter(function (j) { return !dejaVus[j.nom]; });
+        if (!js.length) return;
+        html += '<div class="equipe">' + esc(equipe) + '</div><div class="noms">';
+        js.forEach(function (j) {
+          dejaVus[j.nom] = true;
+          html += '<button data-nom="' + esc(j.nom) + '">' + esc(j.nom) + '</button>';
+        });
+        html += '</div>';
+      });
+      var autres = donnees.joueurs.filter(function (j) { return !dejaVus[j.nom]; });
+      if (autres.length) {
+        html += '<div class="equipe">Autres</div><div class="noms">';
+        autres.forEach(function (j) {
+          html += '<button data-nom="' + esc(j.nom) + '">' + esc(j.nom) + '</button>';
+        });
+        html += '</div>';
+      }
+      if (!donnees.joueurs.length) html += '<div class="vide">Aucun joueur dans la liste pour le moment.</div>';
+      return html + '<p style="margin-top:18px">Pas dans la liste ? Demande au bureau de t\'ajouter.</p></div>';
+    }
+
+    function ecranMesMatchs() {
+      var mesEquipes = joueur(moi).equipes;
+      var miens = donnees.rencontres.filter(function (r) { return mesEquipes.indexOf(r.equipe) !== -1; });
+      if (!miens.length) {
+        return '<div class="vide">Aucune rencontre à venir pour ' + esc(mesEquipes.join(', ') || 'ton équipe') + '.</div>';
+      }
+      return miens.map(carteMatch).join('');
+    }
+
+    function carteMatch(r) {
+      var rep = reponseDe(r.id, moi);
+      var b = bilan(r);
+      var occupe = enCours[r.id] ? ' disabled' : '';
+      var html = '<div class="carte">' +
+        '<p class="jour">' + esc(dateLongue(r.date)) + (r.heure ? ' · ' + esc(r.heure) : '') + '</p>' +
+        '<div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
+        '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+        (r.infos ? '<div class="infos">' + esc(r.infos) + '</div>' : '') +
+        '<div class="boutons">' +
+          '<button class="oui' + (rep === 'Présent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Présent"' + occupe + '>' +
+            (rep === 'Présent' ? '✅ ' : '') + 'Je viens</button>' +
+          '<button class="non' + (rep === 'Absent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Absent"' + occupe + '>' +
+            (rep === 'Absent' ? '❌ ' : '') + 'Je ne viens pas</button>' +
+        '</div>' +
+        (rep ? '<div class="aide">Touche à nouveau pour annuler ta réponse.</div>' : '') +
+        '<details><summary>' + compte(b.presents.length, 'vient', 'viennent') + ' · ' +
+          compte(b.absents.length, 'absent', 'absents') + ' · ' + b.sansReponse.length + ' sans réponse</summary><div class="liste">' +
+          ligneNoms('✅ Viennent', b.presents) +
+          ligneNoms('❌ Ne viennent pas', b.absents) +
+          ligneNoms('… Pas répondu', b.sansReponse) +
+        '</div></details>' +
+        '</div>';
+      return html;
+    }
+
+    function ligneNoms(titre, noms) {
+      return '<div><b>' + titre + '</b> ' + (noms.length ? esc(noms.join(', ')) : '–') + '</div>';
+    }
+
+    function ecranClub() {
+      if (!donnees.rencontres.length) return '<div class="vide">Aucune rencontre à venir.</div>';
+      var parJour = {};
+      var jours = [];
+      donnees.rencontres.forEach(function (r) {
+        if (!parJour[r.date]) { parJour[r.date] = []; jours.push(r.date); }
+        parJour[r.date].push(r);
+      });
+      return jours.map(function (jour) {
+        var rs = parJour[jour];
+        var domicile = rs.filter(function (r) { return r.lieu === 'Domicile'; }).length;
+        var html = '<div class="carte"><p class="jour">' + esc(dateLongue(jour)) + '</p>';
+        if (domicile > donnees.maxDomicileParJour) {
+          html += '<div class="alerte">⚠️ ' + domicile + ' rencontres à domicile ce jour-là, pour ' +
+            donnees.nbTerrains + ' terrains.</div>';
+        }
+        rs.forEach(function (r) {
+          var b = bilan(r);
+          html += '<div class="rencontre">' +
+            '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
+            '<div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
+            '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+            '<div class="compte">✅ ' + compte(b.presents.length, 'vient', 'viennent') +
+            ' · ❌ ' + compte(b.absents.length, 'absent', 'absents') +
+            ' · … ' + b.sansReponse.length + ' sans réponse</div>' +
+            '</div>';
+        });
+        return html + '</div>';
+      }).join('');
+    }
+
+    // --- Actions ---
+    function repondre(id, rep) {
+      var ancienne = reponseDe(id, moi);
+      var nouvelle = ancienne === rep ? '' : rep; // toucher à nouveau = annuler
+
+      // Affichage immédiat, corrigé si le serveur refuse.
+      donnees.reponses[id] = donnees.reponses[id] || {};
+      if (nouvelle) donnees.reponses[id][moi] = nouvelle; else delete donnees.reponses[id][moi];
+      enCours[id] = true;
+      rendre();
+
+      google.script.run
+        .withSuccessHandler(function (reponses) {
+          delete enCours[id];
+          donnees.reponses = reponses;
+          rendre();
+        })
+        .withFailureHandler(function (err) {
+          delete enCours[id];
+          if (ancienne) donnees.reponses[id][moi] = ancienne; else delete donnees.reponses[id][moi];
+          rendre();
+          afficherErreur('Réponse non enregistrée : ' + (err && err.message ? err.message : 'problème de connexion') + '. Réessaie.');
+        })
+        .repondre(id, moi, nouvelle);
+    }
+
+    document.addEventListener('click', function (e) {
+      var cible = e.target.closest('button');
+      if (!cible) return;
+      if (cible.hasAttribute('data-nom')) {
+        moi = cible.getAttribute('data-nom');
+        ecrireNom(moi);
+        onglet = 'mes';
+        rendre();
+        window.scrollTo(0, 0);
+      } else if (cible.id === 'changer') {
+        moi = null;
+        ecrireNom(null);
+        rendre();
+      } else if (cible.hasAttribute('data-onglet')) {
+        onglet = cible.getAttribute('data-onglet');
+        rendre();
+        window.scrollTo(0, 0);
+      } else if (cible.hasAttribute('data-rep')) {
+        repondre(cible.getAttribute('data-id'), cible.getAttribute('data-rep'));
+      }
+    });
+
+    function charger() {
+      google.script.run
+        .withSuccessHandler(function (d) { donnees = d; rendre(); })
+        .withFailureHandler(function (err) {
+          document.getElementById('contenu').innerHTML =
+            '<div class="vide">Impossible de charger les rencontres.<br>' + esc(err && err.message) +
+            '<br><br><button onclick="location.reload()">Réessayer</button></div>';
+        })
+        .getDonnees();
+    }
+
+    // Rafraîchit quand on revient sur l'onglet du navigateur (réponses des autres, nouvelles dates).
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden && donnees && !Object.keys(enCours).length) charger();
+    });
+
+    charger();
+  </script>
+</body>
+</html>
