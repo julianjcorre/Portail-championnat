@@ -374,34 +374,40 @@ function verifierCapitaine_(jeton) {
 
 /**
  * Envoie un lien de connexion si l'adresse est celle d'un capitaine.
- * Répond toujours la même chose, pour ne pas révéler qui est capitaine.
+ * Renvoie un message qui dit clairement ce qui s'est passé.
  */
 function demanderLienCapitaine(adresse) {
   var email = String(adresse || '').trim().toLowerCase();
-  var reponse = 'Si cette adresse est celle d\'un capitaine, un mail avec le lien de connexion vient de partir. Pense à regarder les spams.';
-  if (adressesCapitaines_().indexOf(email) === -1) return reponse;
+  if (!email) throw new Error('Tape ton adresse e-mail.');
+  if (adressesCapitaines_().indexOf(email) === -1) {
+    throw new Error('L\'adresse ' + email + ' n\'est pas dans la liste des capitaines. Vérifie l\'orthographe.');
+  }
 
   var props = PropertiesService.getScriptProperties();
-  var cleCompteur = 'envois_' + email + '_' + Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyyMMdd');
+  var maintenant = new Date();
+  var cleCompteur = 'envois_' + email + '_' + Utilities.formatDate(maintenant, 'Europe/Paris', 'yyyyMMdd');
   var envoyes = Number(props.getProperty(cleCompteur) || 0);
   if (envoyes >= MAX_MAILS_PAR_JOUR) {
-    console.warn('Limite de mails de connexion atteinte aujourd\'hui pour ' + email);
-    return reponse;
+    throw new Error('Trop de demandes aujourd\'hui pour ' + email + '. Utilise le dernier mail reçu ou réessaie demain.');
   }
 
   var jeton = Utilities.getUuid();
   props.setProperty('jeton_' + jeton, JSON.stringify({ email: email, expire: Date.now() + DUREE_JETON_JOURS * 86400000 }));
   var lien = (URL_PAGE || ScriptApp.getService().getUrl()) + '?capitaine=' + jeton;
+  var heure = Utilities.formatDate(maintenant, 'Europe/Paris', 'dd/MM HH:mm');
   MailApp.sendEmail({
     to: email,
-    subject: NOM_CLUB + ' – Connexion à l\'espace capitaines',
+    // Heure dans l'objet : Gmail ne regroupe pas le mail avec les demandes précédentes.
+    subject: NOM_CLUB + ' – Lien de connexion capitaine (' + heure + ')',
     body: 'Bonjour,\n\nPour te connecter à l\'espace capitaines du portail championnat, ouvre ce lien sur ton téléphone :\n\n' +
       lien + '\n\nLe téléphone s\'en souviendra ensuite. Ne transfère pas ce mail : le lien donne accès à la gestion des rencontres.\n',
     name: NOM_CLUB,
   });
   // Compté seulement une fois le mail réellement parti.
   props.setProperty(cleCompteur, String(envoyes + 1));
-  return reponse;
+  console.log('Lien de connexion envoyé à ' + email);
+  return 'Mail envoyé à ' + email + ' (objet « ' + NOM_CLUB + ' – Lien de connexion capitaine (' + heure + ') »). ' +
+    'Il arrive en 1 à 2 minutes ; regarde aussi Spam et Promotions.';
 }
 
 /** Adresse du capitaine connecté avec ce jeton (erreur si le jeton n'est plus valable). */
