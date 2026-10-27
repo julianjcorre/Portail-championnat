@@ -257,6 +257,46 @@ function importerCalendrierUneFois_() {
 }
 
 /**
+ * Nettoyage ponctuel demandé par le club : ne garde que Julian C dans l'onglet
+ * Joueurs et supprime les réponses des joueurs retirés. Ne s'exécute qu'une fois.
+ */
+function nettoyerJoueursUneFois_() {
+  var props = PropertiesService.getScriptProperties();
+  var CLE = 'joueurs_nettoyes_2026_10';
+  if (props.getProperty(CLE)) return;
+
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(20000);
+  try {
+    if (props.getProperty(CLE)) return;
+    var garder = [cleNom_('Julian C')];
+    var ss = SpreadsheetApp.getActive();
+    var joueurs = ss.getSheetByName(ONGLET_JOUEURS);
+    var retires = [];
+    lireLignes_(ONGLET_JOUEURS)
+      .map(function (l, i) {
+        var nom = String(l[0]).trim();
+        if (garder.indexOf(cleNom_(nom)) !== -1) return 0;
+        retires.push(nom);
+        return i + 2;
+      })
+      .filter(Boolean).reverse()
+      .forEach(function (n) { joueurs.deleteRow(n); });
+
+    var reponses = ss.getSheetByName(ONGLET_REPONSES);
+    lireLignes_(ONGLET_REPONSES)
+      .map(function (l, i) { return retires.indexOf(String(l[1]).trim()) !== -1 ? i + 2 : 0; })
+      .filter(Boolean).reverse()
+      .forEach(function (n) { reponses.deleteRow(n); });
+
+    SpreadsheetApp.flush();
+    props.setProperty(CLE, new Date().toISOString());
+  } finally {
+    verrou.releaseLock();
+  }
+}
+
+/**
  * À lancer une fois avec le compte du club : déclenche l'écran d'autorisation
  * Google (dont l'envoi des mails de connexion des capitaines).
  */
@@ -468,6 +508,7 @@ function doGet(e) {
  */
 function getDonnees() {
   importerCalendrierUneFois_();
+  nettoyerJoueursUneFois_();
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone();
 
