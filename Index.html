@@ -179,6 +179,13 @@
     .grille td.hors { color: var(--ligne); }
     .grille tfoot td { font-weight: 700; border-bottom: 0; }
     .grille tfoot td.total { color: var(--vert); }
+    .filtres { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; -webkit-overflow-scrolling: touch; }
+    .filtres button {
+      flex: none; min-height: 38px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--ligne);
+      background: var(--carte); color: var(--texte); font-weight: 600; font-size: 14px; font-family: inherit; cursor: pointer;
+    }
+    .filtres button.choisi { background: var(--noir); border-color: var(--noir); color: var(--jaune); }
+    @media (prefers-color-scheme: dark) { .filtres button.choisi { border-color: var(--jaune); } }
     .legende { color: var(--doux); font-size: 13px; margin: 8px 2px 0; }
     /* Joueurs */
     .joueur { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--ligne); }
@@ -240,6 +247,7 @@
     var brouillon = null;      // valeurs du formulaire de rencontre
     var messageCap = '';
     var renommage = null;      // joueur en cours de renommage
+    var filtreJour = '';       // journée affichée dans le tableau des dispos ('' = toutes)
     // 'matchs' | 'cap' (accueil) | 'cap-form' | 'cap-gerer' | 'cap-dispos'
     var vue = jetonDuLien ? 'cap' : 'matchs';
 
@@ -570,13 +578,27 @@
 
     function ecranTableau() {
       var html = enTeteCap('Tableau des dispos');
-      var rs = donnees.rencontres;
-      if (!rs.length || !donnees.joueurs.length) return html + '<div class="vide">Pas encore de rencontres ou de joueurs.</div></div>';
+      if (!donnees.rencontres.length || !donnees.joueurs.length) return html + '<div class="vide">Pas encore de rencontres ou de joueurs.</div></div>';
+      var jours = parJour(donnees.rencontres).map(function (j) { return j.date; });
+      if (jours.indexOf(filtreJour) === -1) filtreJour = '';
+      html += '<div class="filtres"><button data-filtre-jour=""' + (filtreJour ? '' : ' class="choisi"') + '>Toutes</button>' +
+        jours.map(function (d) {
+          return '<button data-filtre-jour="' + d + '"' + (d === filtreJour ? ' class="choisi"' : '') + '>' + esc(dateCourte(d)) + '</button>';
+        }).join('') + '</div>';
+      var rs = donnees.rencontres.filter(function (r) { return !filtreJour || r.date === filtreJour; });
+      // Sur une journée : dispos d'abord, puis sans réponse, puis pas dispos (pratique pour la sélection).
+      var rang = function (j) {
+        var reps = rs.filter(function (r) { return j.equipes.indexOf(r.equipe) !== -1; }).map(function (r) { return reponseDe(r.id, j.nom); });
+        return reps.indexOf('Présent') !== -1 ? 0 : reps.indexOf('Absent') !== -1 && reps.every(Boolean) ? 2 : 1;
+      };
+      var joueurs = filtreJour
+        ? donnees.joueurs.slice().sort(function (a, b) { return rang(a) - rang(b) || a.nom.localeCompare(b.nom, 'fr'); })
+        : donnees.joueurs;
       html += '<div class="defile"><table class="grille"><thead><tr><th class="nom">Joueur</th>' +
         rs.map(function (r) {
           return '<th><b>' + esc(dateCourte(r.date)) + '</b>' + esc(abregeEquipe(r.equipe)) + ' ' + (r.lieu === 'Domicile' ? '🏠' : r.lieu === 'Extérieur' ? '🚗' : '') + '</th>';
         }).join('') + '<th>Répondu</th></tr></thead><tbody>';
-      donnees.joueurs.forEach(function (j) {
+      joueurs.forEach(function (j) {
         var n = 0, total = 0;
         html += '<tr><td class="nom">' + esc(j.nom) + '</td>' + rs.map(function (r) {
           if (j.equipes.indexOf(r.equipe) === -1) return '<td class="hors">·</td>';
@@ -589,7 +611,8 @@
       html += '</tbody><tfoot><tr><td class="nom">Dispos</td>' + rs.map(function (r) {
         return '<td class="total">' + bilan(r).presents.length + '</td>';
       }).join('') + '<td></td></tr></tfoot></table></div>' +
-        '<p class="legende">✅ dispo · ❌ pas dispo · – pas encore répondu. Fais glisser le tableau vers la gauche pour voir tous les matchs.</p>';
+        '<p class="legende">✅ dispo · ❌ pas dispo · – pas encore répondu.' +
+        (filtreJour ? ' Joueurs triés : dispos d\'abord.' : ' Fais glisser le tableau vers la gauche pour voir tous les matchs.') + '</p>';
       return html + '</div>';
     }
 
@@ -686,6 +709,9 @@
           messageCap = 'Rencontre du ' + dateDansPhrase(supprimee.date) + ' supprimée.';
           vue = 'cap-gerer';
         });
+      } else if (cible.hasAttribute('data-filtre-jour')) {
+        filtreJour = cible.getAttribute('data-filtre-jour');
+        rendre();
       } else if (cible.hasAttribute('data-renommer')) {
         renommage = cible.getAttribute('data-renommer');
         rendre();
