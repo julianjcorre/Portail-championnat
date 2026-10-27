@@ -32,7 +32,7 @@ var NOM_CLUB = 'TC Bazoges';
 
 // Adresse de la page des joueurs hébergée sur GitHub Pages (vide = page Apps Script).
 // Les liens de connexion des capitaines pointent vers cette adresse.
-var URL_PAGE = '';
+var URL_PAGE = 'https://tcbazogeais.github.io/';
 
 // ---------------------------------------------------------------------------
 // Structure de la Sheet (ne pas modifier sans adapter le reste du code)
