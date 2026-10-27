@@ -248,7 +248,11 @@
     }
     // Lien de connexion reçu par mail : ?capitaine=<jeton>
     var jetonDuLien = '<?= jetonCapitaine ?>';
-    if (jetonDuLien) ecrireJeton(jetonDuLien);
+    if (jetonDuLien) {
+      ecrireJeton(jetonDuLien);
+      // Retire ?capitaine=… de la barre d'adresse : l'adresse copiée pour WhatsApp ne doit pas donner l'accès capitaine.
+      try { google.script.history.replace(null, {}, ''); } catch (e) {}
+    }
     var jeton = jetonDuLien || lireJeton();
     var capitaine = null;      // adresse du capitaine connecté
     var donneesCap = null;     // rencontres vues par les capitaines (avec nb de réponses)
