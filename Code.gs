@@ -47,6 +47,8 @@ function onOpen() {
     .createMenu('🎾 ' + NOM_CLUB)
     .addItem('Installer les onglets', 'installerOnglets')
     .addItem('Ouvrir la page des joueurs', 'afficherLienPage')
+    .addSeparator()
+    .addItem('Importer le calendrier 2026-2027', 'importerCalendrier')
     .addToUi();
 }
 
@@ -101,6 +103,94 @@ function installerOnglets() {
     'Onglets prêts. Remplacez les exemples dans « ' + ONGLET_RENCONTRES + ' » et « ' + ONGLET_JOUEURS + ' ».\n\n' +
     'La colonne ID (cachée) se remplit toute seule : ne pas la modifier.'
   );
+}
+
+// Calendrier officiel saison 2026-2027 (PDF « Calendrier des rencontres »).
+var CALENDRIER = [
+  ['2026-10-18', 'Femmes', 'Extérieur', 'Montaigu 2'],
+  ['2026-10-18', 'Hommes 1', 'Extérieur', 'TC Les Achards 2'],
+  ['2026-10-18', 'Hommes 2', 'Extérieur', 'St Etienne Palluau 1'],
+  ['2026-11-01', 'Hommes 2', 'Domicile', 'TC Flavois'],
+  ['2026-11-08', 'Femmes', 'Domicile', 'TC Mortagnais 1'],
+  ['2026-11-08', 'Hommes 1', 'Domicile', 'Ste Hermine TC 1'],
+  ['2026-11-15', 'Hommes 2', 'Domicile', 'TC Rive de Lion 1'],
+  ['2026-11-22', 'Femmes', 'Domicile', 'TC Herbretais 2'],
+  ['2026-11-22', 'Hommes 1', 'Extérieur', 'TC Montaigu 5'],
+  ['2026-12-06', 'Femmes', 'Extérieur', 'TC Entente Yonnaise'],
+  ['2026-12-06', 'Hommes 1', 'Domicile', 'TC Montaigu 4'],
+  ['2026-12-06', 'Hommes 2', 'Extérieur', 'TC Bellevigny 2'],
+  ['2027-01-17', 'Femmes', 'Domicile', "Smash L'Herbergement 1"],
+  ['2027-01-17', 'Hommes 1', 'Extérieur', 'TC Talmont 2'],
+  ['2027-01-17', 'Hommes 2', 'Domicile', 'TC Mouchampais 2'],
+  ['2027-01-31', 'Femmes', 'Extérieur', 'Les Renards de Landeronde 1'],
+  ['2027-01-31', 'Hommes 1', 'Domicile', 'Atlantique TC 3'],
+  ['2027-01-31', 'Hommes 2', 'Extérieur', 'TC Macheen 2'],
+  ['2027-02-07', 'Hommes 2', 'Domicile', 'TC Loulaysien 3'],
+  ['2027-02-14', 'Hommes 1', 'Domicile', 'TC des Clouzeaux 2'],
+  ['2027-02-21', 'Femmes', 'Domicile', 'TC Dompierroise 2'],
+];
+
+/**
+ * Ajoute les rencontres à venir du CALENDRIER à l'onglet Rencontres.
+ * Une rencontre déjà présente (même date, même équipe) garde son ID, son heure,
+ * son statut, ses infos et ses réponses : seuls l'adversaire et le lieu sont mis à jour.
+ * Propose ensuite de supprimer les rencontres à venir absentes du calendrier.
+ */
+function importerCalendrier() {
+  var ui = SpreadsheetApp.getUi();
+  var ss = SpreadsheetApp.getActive();
+  var tz = ss.getSpreadsheetTimeZone();
+  var sheet = ss.getSheetByName(ONGLET_RENCONTRES);
+  var aujourdhui = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+
+  var cle = function (date, equipe) { return date + '|' + equipe; };
+  var lignes = lireLignes_(ONGLET_RENCONTRES);
+  var existantes = {};
+  lignes.forEach(function (l, i) {
+    if (l[1] instanceof Date) existantes[cle(Utilities.formatDate(l[1], tz, 'yyyy-MM-dd'), String(l[3]).trim())] = i + 2;
+  });
+
+  var ajoutees = 0, misesAJour = 0, attendues = {};
+  CALENDRIER.forEach(function (r) {
+    var date = r[0], equipe = r[1], lieu = r[2], adversaire = r[3];
+    attendues[cle(date, equipe)] = true;
+    if (date < aujourdhui) return;
+    var ligne = existantes[cle(date, equipe)];
+    if (ligne) {
+      sheet.getRange(ligne, 5, 1, 2).setValues([[adversaire, lieu]]);
+      misesAJour++;
+    } else {
+      var p = date.split('-');
+      sheet.appendRow([nouvelId_(), new Date(+p[0], +p[1] - 1, +p[2]), '', equipe, adversaire, lieu, 'En attente', '']);
+      ajoutees++;
+    }
+  });
+
+  // Rencontres à venir qui ne figurent pas au calendrier (exemples, dates provisoires…).
+  var enTrop = [];
+  lireLignes_(ONGLET_RENCONTRES).forEach(function (l, i) {
+    if (!(l[1] instanceof Date)) return;
+    var date = Utilities.formatDate(l[1], tz, 'yyyy-MM-dd');
+    if (date >= aujourdhui && !attendues[cle(date, String(l[3]).trim())]) {
+      enTrop.push({ ligne: i + 2, texte: Utilities.formatDate(l[1], tz, 'dd/MM/yyyy') + ' ' + l[3] + (l[4] ? ' – ' + l[4] : '') });
+    }
+  });
+  var supprimees = 0;
+  if (enTrop.length) {
+    var choix = ui.alert('Rencontres absentes du calendrier officiel',
+      enTrop.map(function (x) { return '• ' + x.texte; }).join('\n') + '\n\nLes supprimer ?',
+      ui.ButtonSet.YES_NO);
+    if (choix === ui.Button.YES) {
+      enTrop.sort(function (a, b) { return b.ligne - a.ligne; }).forEach(function (x) { sheet.deleteRow(x.ligne); });
+      supprimees = enTrop.length;
+    }
+  }
+
+  var derniere = sheet.getLastRow();
+  if (derniere > 2) sheet.getRange(2, 1, derniere - 1, sheet.getLastColumn()).sort([{ column: 2 }, { column: 4 }]);
+
+  ui.alert('Calendrier importé : ' + ajoutees + ' rencontre(s) ajoutée(s), ' + misesAJour + ' mise(s) à jour, ' +
+    supprimees + ' supprimée(s).\n\nPassez le statut à « Validée » à réception des convocations.');
 }
 
 function afficherLienPage() {

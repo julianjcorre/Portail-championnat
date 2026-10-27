@@ -33,6 +33,7 @@ Tout se gère dans la Google Sheet, la page se met à jour toute seule.
 | Réponses | ID rencontre, Nom, Réponse, Répondu le | Automatique |
 
 - Valider une date = passer le statut à « Validée ».
+- Calendrier officiel de la saison : menu **🎾 → Importer le calendrier 2026-2027** (liste `CALENDRIER` dans `Code.gs`). Ajoute les rencontres à venir, met à jour adversaire et lieu de celles déjà présentes (sans toucher heure, statut, infos ni réponses), puis propose de supprimer les rencontres à venir absentes du calendrier.
 - Équipes : Hommes 1, Hommes 2, Femmes. Joueur dans 2 équipes : « Hommes 1, Hommes 2 » (cas de tous les hommes pour l'instant).
 - Noms : prénom + initiale du nom. Si un joueur s'inscrit en double (« Seb B » et « Sébastien B »), garder une ligne et renommer ses réponses dans l'onglet Réponses.
 - Choix proposés à l'inscription : `GROUPES_INSCRIPTION` en haut de `Code.gs`.
@@ -84,5 +85,4 @@ Une fois réglé, chaque modification poussée sur `main` est envoyée dans Apps
 
 ## Évolutions possibles
 
-- [ ] Saisir les vraies dates des 3 équipes dans l'onglet Rencontres.
 - [ ] Régler le problème « plusieurs comptes Google connectés » : héberger la page elle-même sur GitHub Pages et n'utiliser Apps Script que pour lire/écrire la Sheet (appels `fetch`). Supprime aussi le bandeau gris de Google.
