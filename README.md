@@ -77,8 +77,10 @@ Une fois réglé, chaque modification poussée sur `main` est envoyée dans Apps
 - Google affiche un petit bandeau gris en haut de la page (« créée par un utilisateur de Google Apps Script ») : normal.
 - N'importe qui peut répondre au nom d'un autre. Acceptable pour le club ; l'onglet Réponses garde la date de chaque réponse.
 - Les rencontres passées (avant hier) ne s'affichent plus.
+- **Plusieurs comptes Google connectés dans le même navigateur** : Google peut afficher « Impossible d'ouvrir le fichier pour le moment » (sur la page des joueurs comme sur Extensions → Apps Script). Contournement : fenêtre de navigation privée, ou un seul compte connecté. Sur téléphone, sans compte Google connecté, la page s'ouvre normalement.
 
 ## Évolutions possibles
 
 - [ ] Bouton « Je ne suis pas dans la liste » : le joueur tape son prénom, choisit son équipe, et il est ajouté à l'onglet Joueurs.
 - [ ] Saisir les vraies dates des 3 équipes dans l'onglet Rencontres.
+- [ ] Régler le problème « plusieurs comptes Google connectés » : héberger la page elle-même sur GitHub Pages et n'utiliser Apps Script que pour lire/écrire la Sheet (appels `fetch`). Supprime aussi le bandeau gris de Google.
