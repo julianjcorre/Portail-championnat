@@ -105,12 +105,19 @@
     .compte { font-size: 14px; color: var(--doux); }
     .qui h2 { margin: 4px 0 4px; font-size: 22px; }
     .qui p { color: var(--doux); margin: 0 0 14px; }
-    .qui .equipe { font-weight: 700; margin: 16px 0 8px; }
-    .noms { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-    .noms button {
-      min-height: 52px; border-radius: 12px; border: 2px solid var(--ligne);
-      background: var(--carte); color: var(--texte); font-weight: 600; font-size: 17px; font-family: inherit; cursor: pointer;
+    .qui label { display: block; font-weight: 600; margin-bottom: 8px; }
+    .qui input {
+      width: 100%; min-height: 54px; border-radius: 12px; border: 2px solid var(--ligne);
+      background: var(--carte); color: var(--texte); font-size: 19px; font-family: inherit; padding: 0 14px;
     }
+    .qui input:focus { outline: none; border-color: var(--vert); }
+    .gros {
+      width: 100%; min-height: 56px; margin-top: 12px; border-radius: 12px; border: 0;
+      background: var(--vert); color: #fff; font-weight: 700; font-size: 18px; font-family: inherit; cursor: pointer;
+    }
+    .gros.second { background: var(--carte); color: var(--texte); border: 2px solid var(--ligne); }
+    .gros:disabled { opacity: .6; }
+    .lien { background: none; border: 0; color: var(--doux); text-decoration: underline; font: inherit; padding: 12px 0; cursor: pointer; }
     .vide, .chargement { text-align: center; color: var(--doux); padding: 40px 0; }
     .erreur {
       position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 3;
@@ -139,6 +146,7 @@
     var donnees = null;
     var onglet = 'mes';
     var enCours = {}; // rencontres dont la réponse part au serveur
+    var inscription = { nom: '', choixGroupe: false, envoi: false };
 
     // --- Mémoire du téléphone (peut être indisponible en navigation privée) ---
     function lireNom() { try { return localStorage.getItem(CLE_NOM); } catch (e) { return null; } }
@@ -203,6 +211,8 @@
       var zoneMoi = document.getElementById('moi');
 
       if (!donnees) return;
+      var champ = document.getElementById('champ-nom');
+      if (champ && !inscription.choixGroupe) inscription.nom = champ.value;
 
       if (!moi || !joueur(moi)) {
         moi = null;
@@ -221,30 +231,35 @@
       contenu.innerHTML = onglet === 'mes' ? ecranMesMatchs() : ecranClub();
     }
 
+    /** Même clé que côté serveur : sans accents, majuscules, points ni espaces. */
+    function cleNom(texte) {
+      return String(texte).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
+    }
+    /** « julien  c » → « Julien C » (même règle que côté serveur). */
+    function nettoyerNom(texte) {
+      return String(texte || '').trim().replace(/\s+/g, ' ').toLowerCase()
+        .replace(/(^|[\s'-])(\p{L})/gu, function (m, sep, lettre) { return sep + lettre.toUpperCase(); });
+    }
+    function joueurParSaisie(texte) {
+      var cle = cleNom(texte);
+      return donnees.joueurs.filter(function (j) { return cleNom(j.nom) === cle; })[0];
+    }
+
     function ecranQui() {
-      var html = '<div class="qui"><h2>Qui es-tu ?</h2>' +
-        '<p>Touche ton prénom. Ton téléphone s\'en souviendra.</p>';
-      var dejaVus = {};
-      donnees.equipes.forEach(function (equipe) {
-        var js = joueursEquipe(equipe).filter(function (j) { return !dejaVus[j.nom]; });
-        if (!js.length) return;
-        html += '<div class="equipe">' + esc(equipe) + '</div><div class="noms">';
-        js.forEach(function (j) {
-          dejaVus[j.nom] = true;
-          html += '<button data-nom="' + esc(j.nom) + '">' + esc(j.nom) + '</button>';
-        });
-        html += '</div>';
-      });
-      var autres = donnees.joueurs.filter(function (j) { return !dejaVus[j.nom]; });
-      if (autres.length) {
-        html += '<div class="equipe">Autres</div><div class="noms">';
-        autres.forEach(function (j) {
-          html += '<button data-nom="' + esc(j.nom) + '">' + esc(j.nom) + '</button>';
-        });
-        html += '</div>';
+      var html = '<div class="qui"><h2>Qui es-tu ?</h2>';
+      if (!inscription.choixGroupe) {
+        return html + '<p>La première fois seulement : ton téléphone s\'en souviendra.</p>' +
+          '<form id="form-nom"><label for="champ-nom">Ton prénom et l\'initiale de ton nom</label>' +
+          '<input id="champ-nom" placeholder="ex. Julien C." autocomplete="name" autocapitalize="words" maxlength="40" value="' +
+            esc(inscription.nom) + '">' +
+          '<button class="gros" type="submit">Continuer</button></form></div>';
       }
-      if (!donnees.joueurs.length) html += '<div class="vide">Aucun joueur dans la liste pour le moment.</div>';
-      return html + '<p style="margin-top:18px">Pas dans la liste ? Demande au bureau de t\'ajouter.</p></div>';
+      html += '<p>Bienvenue <b>' + esc(inscription.nom) + '</b> ! Tu joues dans quelle équipe ?</p>';
+      donnees.groupes.forEach(function (g) {
+        html += '<button class="gros second" data-groupe="' + esc(g) + '"' +
+          (inscription.envoi ? ' disabled' : '') + '>' + esc(g) + '</button>';
+      });
+      return html + '<button class="lien" id="corriger-nom">← Corriger mon nom</button></div>';
     }
 
     function ecranMesMatchs() {
@@ -384,15 +399,15 @@
     document.addEventListener('click', function (e) {
       var cible = e.target.closest('button');
       if (!cible) return;
-      if (cible.hasAttribute('data-nom')) {
-        moi = cible.getAttribute('data-nom');
-        ecrireNom(moi);
-        onglet = 'mes';
+      if (cible.hasAttribute('data-groupe')) {
+        inscrire(cible.getAttribute('data-groupe'));
+      } else if (cible.id === 'corriger-nom') {
+        inscription.choixGroupe = false;
         rendre();
-        window.scrollTo(0, 0);
       } else if (cible.id === 'changer') {
         moi = null;
         ecrireNom(null);
+        inscription = { nom: '', choixGroupe: false, envoi: false };
         rendre();
       } else if (cible.hasAttribute('data-onglet')) {
         onglet = cible.getAttribute('data-onglet');
@@ -402,6 +417,39 @@
         repondre(cible.getAttribute('data-ids'), cible.getAttribute('data-rep'));
       }
     });
+
+    document.addEventListener('submit', function (e) {
+      if (e.target.id !== 'form-nom') return;
+      e.preventDefault();
+      var saisie = nettoyerNom(document.getElementById('champ-nom').value);
+      if (cleNom(saisie).length < 2) { afficherErreur('Écris ton prénom et l\'initiale de ton nom.'); return; }
+      inscription.nom = saisie;
+      var existant = joueurParSaisie(saisie);
+      if (existant) connecter(existant.nom);
+      else { inscription.choixGroupe = true; rendre(); }
+    });
+
+    function connecter(nom) {
+      moi = nom;
+      ecrireNom(moi);
+      inscription = { nom: '', choixGroupe: false, envoi: false };
+      onglet = 'mes';
+      rendre();
+      window.scrollTo(0, 0);
+    }
+
+    function inscrire(groupe) {
+      inscription.envoi = true;
+      rendre();
+      google.script.run
+        .withSuccessHandler(function (r) { donnees = r.donnees; connecter(r.nom); })
+        .withFailureHandler(function (err) {
+          inscription.envoi = false;
+          rendre();
+          afficherErreur('Inscription impossible : ' + (err && err.message ? err.message : 'problème de connexion') + '.');
+        })
+        .inscrire(inscription.nom, groupe);
+    }
 
     function charger() {
       google.script.run

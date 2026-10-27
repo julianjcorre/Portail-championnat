@@ -14,6 +14,11 @@ var NB_TERRAINS = 2;
 // Au-delà de ce nombre de rencontres à domicile le même jour, la page affiche une alerte.
 var MAX_DOMICILE_PAR_JOUR = 1;
 var EQUIPES = ['Hommes 1', 'Hommes 2', 'Femmes'];
+// Choix proposé à un joueur qui s'inscrit lui-même sur la page, et équipes qu'il rejoint.
+var GROUPES_INSCRIPTION = [
+  { libelle: 'Hommes', equipes: ['Hommes 1', 'Hommes 2'] },
+  { libelle: 'Femmes', equipes: ['Femmes'] },
+];
 
 var NOM_CLUB = 'TC Bazoges';
 
@@ -26,7 +31,7 @@ var ONGLET_JOUEURS = 'Joueurs';
 var ONGLET_REPONSES = 'Réponses';
 
 var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos'];
-var ENTETES_JOUEURS = ['Nom', 'Équipe(s)'];
+var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le'];
 var ENTETES_REPONSES = ['ID rencontre', 'Nom', 'Réponse', 'Répondu le'];
 
 var LIEUX = ['Domicile', 'Extérieur'];
@@ -186,6 +191,7 @@ function getDonnees() {
 
   return {
     equipes: EQUIPES,
+    groupes: GROUPES_INSCRIPTION.map(function (g) { return g.libelle; }),
     nbTerrains: NB_TERRAINS,
     maxDomicileParJour: MAX_DOMICILE_PAR_JOUR,
     joueurs: joueurs,
@@ -240,6 +246,50 @@ function repondre(idsRencontres, nom, reponse) {
     verrou.releaseLock();
   }
   return lireReponses_();
+}
+
+/**
+ * Inscription d'un joueur qui a tapé son nom sur la page.
+ * Si le nom existe déjà (sans tenir compte des majuscules ni des accents),
+ * renvoie le nom existant ; sinon l'ajoute à l'onglet Joueurs avec les
+ * équipes du groupe choisi. Renvoie { nom, donnees }.
+ */
+function inscrire(nomSaisi, libelleGroupe) {
+  var nom = nettoyerNom_(nomSaisi);
+  if (nom.length < 2) throw new Error('Nom trop court.');
+  if (nom.length > 40) throw new Error('Nom trop long.');
+  if (!/^[\p{L} .'-]+$/u.test(nom)) throw new Error('Le nom ne doit contenir que des lettres.');
+
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var existant = lireLignes_(ONGLET_JOUEURS)
+      .map(function (l) { return String(l[0]).trim(); })
+      .filter(function (n) { return n && cleNom_(n) === cleNom_(nom); })[0];
+    if (existant) return { nom: existant, donnees: getDonnees() };
+
+    var groupe = GROUPES_INSCRIPTION.filter(function (g) { return g.libelle === libelleGroupe; })[0];
+    if (!groupe) throw new Error('Choisis ton équipe.');
+
+    var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_JOUEURS);
+    if (!sheet.getRange(1, 3).getValue()) sheet.getRange(1, 3).setValue(ENTETES_JOUEURS[2]).setFontWeight('bold');
+    sheet.appendRow([nom, groupe.equipes.join(', '), new Date()]);
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return { nom: nom, donnees: getDonnees() };
+}
+
+/** « julien  c » → « Julien C ». */
+function nettoyerNom_(texte) {
+  return String(texte || '').trim().replace(/\s+/g, ' ').toLowerCase()
+    .replace(/(^|[\s'-])(\p{L})/gu, function (m, sep, lettre) { return sep + lettre.toUpperCase(); });
+}
+
+/** Clé de comparaison : sans accents, majuscules, points ni espaces. */
+function cleNom_(texte) {
+  return String(texte).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
 }
 
 // ---------------------------------------------------------------------------
