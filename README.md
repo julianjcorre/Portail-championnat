@@ -10,7 +10,8 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
 | --- | --- |
 | `Code.gs` | Côté serveur : menu de la Sheet, lecture des onglets, enregistrement des réponses. Réglages en haut du fichier. |
 | `Index.html` | La page affichée aux joueurs (mobile d'abord). |
-| `appsscript.json` | Manifeste Apps Script (fuseau Europe/Paris, accès web). Utile seulement avec `clasp`. |
+| `appsscript.json` | Manifeste Apps Script (fuseau Europe/Paris, accès web), envoyé par la mise en ligne automatique. |
+| `.github/workflows/deployer.yml` | Mise en ligne automatique à chaque push sur `main`. |
 
 ## Côté joueurs
 
@@ -46,21 +47,33 @@ Tout se gère dans la Google Sheet, la page se met à jour toute seule.
 7. Apps Script → **Déployer → Nouveau déploiement → Application Web**. Exécuter en tant que : **Moi**. Accès : **Tout le monde** (pas « Tout le monde ayant un compte Google »).
 8. Copier l'URL (aussi disponible via le menu 🎾 → Ouvrir la page des joueurs) et l'épingler dans les groupes WhatsApp.
 
-### Variante avec clasp (optionnel)
+## Mise en ligne automatique depuis GitHub
 
-Pour envoyer le code depuis ce dépôt sans copier-coller :
+Une fois réglé, chaque modification poussée sur `main` est envoyée dans Apps Script et mise en ligne toute seule, avec la même URL (`.github/workflows/deployer.yml`, onglet **Actions** du dépôt pour suivre).
 
-```bash
-npm install -g @google/clasp
-clasp login
-clasp clone <ID du projet Apps Script> --rootDir .   # ID : Apps Script → Paramètres du projet
-clasp push
-```
+À faire une seule fois, après la mise en place ci-dessus :
+
+1. Activer l'API Apps Script avec le compte du club : https://script.google.com/home/usersettings → « API Google Apps Script » → **Activé**.
+2. Sur un ordinateur avec [Node.js](https://nodejs.org) :
+   ```bash
+   npm install -g @google/clasp@2.4.2
+   clasp login
+   ```
+   Se connecter avec le compte Google du club. Cela crée le fichier `.clasprc.json` dans le dossier personnel (`~/.clasprc.json` sur Mac/Linux, `C:\Users\<nom>\.clasprc.json` sur Windows).
+3. Dans GitHub : dépôt → **Settings → Secrets and variables → Actions → New repository secret**, créer :
+   | Secret | Valeur |
+   | --- | --- |
+   | `CLASPRC_JSON` | tout le contenu du fichier `.clasprc.json` |
+   | `SCRIPT_ID` | Apps Script → ⚙️ Paramètres du projet → ID du script |
+   | `DEPLOYMENT_ID` | Apps Script → Déployer → Gérer les déploiements → ID de déploiement |
+4. Onglet **Actions** → « Déployer sur Apps Script » → **Run workflow** pour vérifier que tout est vert.
+
+> ⚠️ `.clasprc.json` donne accès aux scripts du compte Google du club : il ne va que dans les secrets GitHub, jamais dans le code ni dans un message. Pour couper l'accès : https://myaccount.google.com/permissions → retirer « clasp ».
 
 ## Maintenance
 
 - Modifier les données de la Sheet : rien à redéployer.
-- Modifier le code : **Déployer → Gérer les déploiements → Modifier → Nouvelle version** (garde la même URL).
+- Modifier le code : pousser sur `main` (mise en ligne automatique). Sans l'automatisation : coller le code puis **Déployer → Gérer les déploiements → Modifier → Nouvelle version** (garde la même URL).
 - Réglages en haut de `Code.gs` : `NB_TERRAINS` (2), `MAX_DOMICILE_PAR_JOUR` (1, seuil de l'alerte), `EQUIPES`.
 
 ## Points d'attention
