@@ -475,19 +475,20 @@
     }
     function surIphone() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
 
-    function installer() {
-      if (invitationInstall) {
-        invitationInstall.prompt();
-        invitationInstall.userChoice.then(function () { invitationInstall = null; rendre(); });
-      } else {
-        allerA('installer');
-      }
+    function installer() { allerA('installer'); }
+
+    function installerMaintenant() {
+      if (!invitationInstall) return;
+      invitationInstall.prompt();
+      invitationInstall.userChoice.then(function () { invitationInstall = null; rendre(); });
     }
 
     function ecranInstaller() {
       var iphone = surIphone();
       return '<div class="cap"><button class="lien" data-vue="matchs">← Retour aux matchs</button>' +
         '<h2>📲 Installer l\'appli</h2><p class="sous">L\'icône du club apparaîtra sur ton téléphone, comme une vraie appli.</p>' +
+        (invitationInstall ? '<button class="gros" id="installer-direct" style="margin:0 0 16px">📲 Installer maintenant</button>' +
+          '<p class="sous">Si rien ne se passe ou si l\'icône n\'apparaît pas, suis les étapes ci-dessous.</p>' : '') +
         '<div class="carte"><ol class="etapes">' + (iphone
           ? '<li>Ouvre cette page dans <b>Safari</b> (pas depuis WhatsApp ou Gmail : touche « Ouvrir dans Safari » si besoin).</li>' +
             '<li>Touche le bouton <b>Partager</b> ⬆️ en bas de l\'écran.</li>' +
@@ -495,7 +496,13 @@
           : '<li>Ouvre cette page dans <b>Chrome</b> (depuis WhatsApp : menu ⋮ → « Ouvrir dans Chrome »).</li>' +
             '<li>Touche le menu <b>⋮</b> en haut à droite.</li>' +
             '<li>Choisis <b>« Ajouter à l\'écran d\'accueil »</b> ou <b>« Installer l\'appli »</b>, puis <b>Installer</b>.</li>') +
+          '' +
         '<li>Ouvre l\'appli depuis l\'icône : tape ton prénom une fois, c\'est tout.</li></ol></div>' +
+        (iphone ? '' : '<div class="carte"><b>📱 Xiaomi, Redmi, Poco, Huawei, Oppo : l\'icône n\'apparaît pas ?</b>' +
+          '<ol class="etapes" style="margin-top:8px">' +
+          '<li>Appui long sur l\'icône <b>Chrome</b> → <b>ⓘ Infos sur l\'application</b>.</li>' +
+          '<li><b>Autres autorisations</b> → <b>Raccourcis sur l\'écran d\'accueil</b> → <b>Accepter</b>.</li>' +
+          '<li>Reviens ici et recommence l\'installation (menu ⋮ → Ajouter à l\'écran d\'accueil).</li></ol></div>') +
         '<p class="sous">Capitaine ? Dans l\'appli, ⚙️ Espace capitaines → ton adresse → tape le <b>code reçu par mail</b>.</p></div>';
     }
 
@@ -506,7 +513,7 @@
     window.addEventListener('appinstalled', function () {
       invitationInstall = null;
       afficherInfo('Appli installée ✅ Cherche « TCB Champ. » dans la liste de tes applis (glisse vers le haut). ' +
-        'Pour l\'avoir sur l\'écran d\'accueil : appui long sur l\'icône → Ajouter à l\'écran d\'accueil.');
+        'Pas d\'icône (Xiaomi…) ? Bouton 📲 Installer l\'appli en bas de la page pour le réglage à faire.');
       setTimeout(rendre, 500);
     });
     if (!surAppsScript && 'serviceWorker' in navigator) {
@@ -1008,6 +1015,8 @@
         });
       } else if (cible.id === 'installer') {
         installer();
+      } else if (cible.id === 'installer-direct') {
+        installerMaintenant();
       } else if (cible.id === 'deja-code') {
         capEmail = (document.getElementById('cap-email') || {}).value || capEmail;
         codeEnvoye = true;
