@@ -192,7 +192,8 @@
         : '<span class="badge attente">⏳ En attente de convocation</span>';
     }
     function badgeLieu(r) {
-      return '<span class="badge">' + (r.lieu === 'Domicile' ? '🏠 Domicile' : '🚗 Extérieur') + '</span>';
+      var texte = r.lieu === 'Domicile' ? '🏠 Domicile' : r.lieu === 'Extérieur' ? '🚗 Extérieur' : '📍 Lieu à venir';
+      return '<span class="badge">' + texte + '</span>';
     }
 
     // --- Écrans ---
