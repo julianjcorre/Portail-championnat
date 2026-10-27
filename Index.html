@@ -356,6 +356,7 @@
       inscription.nom = saisie;
       var existant = joueurParSaisie(saisie);
       if (existant) connecter(existant.nom);
+      else if (donnees.groupes.length === 1) inscrire(donnees.groupes[0]); // une seule équipe : pas de question
       else { inscription.choixGroupe = true; rendre(); }
     });
 

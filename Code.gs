@@ -13,11 +13,19 @@
 var NB_TERRAINS = 2;
 // Au-delà de ce nombre de rencontres à domicile le même jour, la page affiche une alerte.
 var MAX_DOMICILE_PAR_JOUR = 1;
-var EQUIPES = ['Hommes 1', 'Hommes 2', 'Femmes'];
+// Seules ces équipes apparaissent sur la page (les autres lignes de la Sheet sont ignorées).
+var EQUIPES = ['Hommes 1', 'Hommes 2'];
 // Choix proposé à un joueur qui s'inscrit lui-même sur la page, et équipes qu'il rejoint.
+// Avec un seul groupe, la page ne pose pas la question.
 var GROUPES_INSCRIPTION = [
   { libelle: 'Hommes', equipes: ['Hommes 1', 'Hommes 2'] },
-  { libelle: 'Femmes', equipes: ['Femmes'] },
+];
+
+// Comptes Google autorisés à gérer les rencontres (en plus du propriétaire de la Sheet).
+var CAPITAINES = [
+  'julian.jcorre@gmail.com',
+  'florent.guery1@gmail.com',
+  'jamin.matthieu85@gmail.com',
 ];
 
 var NOM_CLUB = 'TC Bazoges';
@@ -46,6 +54,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🎾 ' + NOM_CLUB)
     .addItem('⚙️ Paramètres capitaines', 'ouvrirParametres')
+    .addItem('👥 Donner l\'accès aux capitaines', 'partagerAvecCapitaines')
     .addSeparator()
     .addItem('Installer les onglets', 'installerOnglets')
     .addItem('Ouvrir la page des joueurs', 'afficherLienPage')
@@ -73,7 +82,6 @@ function installerOnglets() {
     rencontres.getRange(2, 1, 3, ENTETES_RENCONTRES.length).setValues([
       [nouvelId_(), dansUneSemaine, '09:00', 'Hommes 1', 'TC Exemple', 'Domicile', 'Validée', 'RDV 8h30 au club'],
       [nouvelId_(), dansUneSemaine, '14:00', 'Hommes 2', 'AS Exemple', 'Domicile', 'En attente', ''],
-      [nouvelId_(), dansUneSemaine, '09:00', 'Femmes', 'US Exemple', 'Extérieur', 'Validée', 'Covoiturage 8h devant la mairie'],
     ]);
     ajouterListe_(rencontres, 'D2:D', EQUIPES);
     ajouterListe_(rencontres, 'F2:F', LIEUX);
@@ -89,7 +97,6 @@ function installerOnglets() {
       ['Julien', 'Hommes 1'],
       ['Thomas G.', 'Hommes 1, Hommes 2'],
       ['Marc', 'Hommes 2'],
-      ['Claire', 'Femmes'],
     ]);
   }
 
@@ -228,18 +235,29 @@ function ouvrirParametres() {
     HtmlService.createHtmlOutputFromFile('Capitaines').setTitle('⚙️ Paramètres capitaines'));
 }
 
-/** Refuse l'appel si la personne n'est pas propriétaire ou éditrice de la Sheet. */
+/** Refuse l'appel si la personne n'est ni propriétaire de la Sheet ni dans CAPITAINES. */
 function verifierCapitaine_() {
   // Vide pour un visiteur de la page publique (le script s'exécute alors en tant que propriétaire).
   var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  var ss = SpreadsheetApp.getActive();
-  var autorises = ss.getEditors().concat([ss.getOwner()])
-    .filter(Boolean)
-    .map(function (u) { return String(u.getEmail()).toLowerCase(); });
+  var proprietaire = SpreadsheetApp.getActive().getOwner();
+  var autorises = CAPITAINES.map(function (e) { return e.toLowerCase(); })
+    .concat(proprietaire ? [String(proprietaire.getEmail()).toLowerCase()] : []);
   if (!email || autorises.indexOf(email) === -1) {
-    throw new Error('Réservé aux capitaines : ouvrez la Google Sheet avec votre compte.');
+    throw new Error('Réservé aux capitaines : ouvrez la Google Sheet avec un compte capitaine.');
   }
   return email;
+}
+
+/** Donne aux CAPITAINES le droit de modifier la Sheet (Google leur envoie un mail). */
+function partagerAvecCapitaines() {
+  verifierCapitaine_();
+  var ss = SpreadsheetApp.getActive();
+  var deja = ss.getEditors().map(function (u) { return String(u.getEmail()).toLowerCase(); });
+  var nouveaux = CAPITAINES.filter(function (e) { return deja.indexOf(e.toLowerCase()) === -1; });
+  if (nouveaux.length) ss.addEditors(nouveaux);
+  SpreadsheetApp.getUi().alert(nouveaux.length
+    ? 'Accès donné à :\n' + nouveaux.join('\n') + '\n\nIls reçoivent un mail de Google avec le lien de la Sheet.'
+    : 'Les capitaines ont déjà accès à la Sheet.');
 }
 
 function getDonneesCapitaines() {
@@ -436,7 +454,9 @@ function inscrire(nomSaisi, libelleGroupe) {
       .filter(function (n) { return n && cleNom_(n) === cleNom_(nom); })[0];
     if (existant) return { nom: existant, donnees: getDonnees() };
 
-    var groupe = GROUPES_INSCRIPTION.filter(function (g) { return g.libelle === libelleGroupe; })[0];
+    var groupe = GROUPES_INSCRIPTION.length === 1
+      ? GROUPES_INSCRIPTION[0]
+      : GROUPES_INSCRIPTION.filter(function (g) { return g.libelle === libelleGroupe; })[0];
     if (!groupe) throw new Error('Choisis ton équipe.');
 
     var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_JOUEURS);
@@ -495,7 +515,7 @@ function lireRencontres_() {
         infos: String(l[7]).trim(),
       };
     })
-    .filter(function (r) { return r.date >= depuis; })
+    .filter(function (r) { return r.date >= depuis && EQUIPES.indexOf(r.equipe) !== -1; })
     .sort(function (a, b) {
       return (a.date + a.heure + a.equipe).localeCompare(b.date + b.heure + b.equipe);
     });

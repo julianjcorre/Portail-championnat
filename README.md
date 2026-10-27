@@ -19,15 +19,19 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
 1. Ils ouvrent le lien (navigateur du téléphone, pas de connexion).
 2. La 1re fois, ils écrivent leur prénom et l'initiale de leur nom (« Julien C. »). Le téléphone s'en souvient.
    - Nom déjà dans l'onglet Joueurs (sans tenir compte des majuscules, accents, points) : reconnu directement.
-   - Nouveau nom : la page demande « Hommes » ou « Femmes » et l'ajoute à l'onglet Joueurs (Hommes → Hommes 1 et Hommes 2), avec la date d'inscription.
+   - Nouveau nom : ajouté à l'onglet Joueurs (équipes Hommes 1 et Hommes 2), avec la date d'inscription. S'il y avait plusieurs groupes dans `GROUPES_INSCRIPTION`, la page demanderait lequel.
 3. Une seule liste : **tous les matchs du club**, par date. Sur chaque match, un gros bouton « Je suis dispo » / « Pas dispo » (n'importe quel joueur peut répondre sur n'importe quel match). Toucher à nouveau annule la réponse.
 4. Pour chaque match : statut de la date, heure, domicile/extérieur, infos, et la liste des dispos / pas dispos / sans réponse (joueurs de l'équipe concernée). Alerte rouge quand il y a trop de rencontres à domicile le même jour (2 terrains).
 
 ## Côté capitaines
 
-Seules les personnes avec qui la Sheet est partagée **en modification** (le compte du club + les 2 capitaines) peuvent gérer les rencontres. La sécurité repose sur le partage Google : les joueurs n'ont pas accès à la Sheet.
+Seuls le propriétaire de la Sheet (compte du club) et les comptes listés dans `CAPITAINES` (en haut de `Code.gs`) peuvent gérer les rencontres :
 
-1. Partager la Sheet : bouton **Partager** → adresse Gmail de chaque capitaine → **Éditeur**.
+- julian.jcorre@gmail.com
+- florent.guery1@gmail.com
+- jamin.matthieu85@gmail.com
+
+1. Donner l'accès : avec le compte du club, menu **🎾 → 👥 Donner l'accès aux capitaines** (ajoute les capitaines comme éditeurs de la Sheet ; Google leur envoie un mail).
 2. Le capitaine ouvre la Sheet (lien « ⚙️ Espace capitaines » en bas de la page des joueurs, ou le lien reçu par mail), connecté avec son compte Google.
 3. Menu **🎾 TC Bazoges → ⚙️ Paramètres capitaines** : un panneau s'ouvre à droite.
    - **+ Ajouter une rencontre** : date, heure, équipe, adversaire, lieu, statut, infos.
@@ -37,7 +41,7 @@ Seules les personnes avec qui la Sheet est partagée **en modification** (le com
 
 Le panneau fonctionne sur ordinateur. Sur téléphone, l'appli Google Sheets n'affiche pas les menus de script : modifier directement les cases de l'onglet Rencontres.
 
-Les fonctions du panneau (et Installer les onglets / Importer le calendrier) vérifient que la personne connectée est propriétaire ou éditrice de la Sheet : elles sont refusées depuis la page publique.
+Les fonctions du panneau (et Installer les onglets / Importer le calendrier / Donner l'accès) vérifient que le compte connecté est le propriétaire ou un capitaine : refusées pour tout autre compte et depuis la page publique.
 
 ## Côté bureau
 
@@ -51,7 +55,7 @@ Tout se gère dans la Google Sheet, la page se met à jour toute seule.
 
 - Valider une date = passer le statut à « Validée ».
 - Calendrier officiel de la saison : menu **🎾 → Importer le calendrier 2026-2027** (liste `CALENDRIER` dans `Code.gs`). Ajoute les rencontres à venir, met à jour adversaire et lieu de celles déjà présentes (sans toucher heure, statut, infos ni réponses), puis propose de supprimer les rencontres à venir absentes du calendrier.
-- Équipes : Hommes 1, Hommes 2, Femmes. Joueur dans 2 équipes : « Hommes 1, Hommes 2 » (cas de tous les hommes pour l'instant).
+- Équipes : Hommes 1 et Hommes 2 (`EQUIPES` dans `Code.gs`). Les lignes d'autres équipes (ex. Femmes) sont ignorées par la page. Joueur dans 2 équipes : « Hommes 1, Hommes 2 ».
 - Noms : prénom + initiale du nom. Si un joueur s'inscrit en double (« Seb B » et « Sébastien B »), garder une ligne et renommer ses réponses dans l'onglet Réponses.
 - Choix proposés à l'inscription : `GROUPES_INSCRIPTION` en haut de `Code.gs`.
 - Heure : « 9h », « 9h30 » ou « 09:30 », tout est accepté.
