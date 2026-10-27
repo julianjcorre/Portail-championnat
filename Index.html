@@ -377,7 +377,7 @@
       var el = document.getElementById('erreur');
       el.style.background = 'var(--vert)';
       clearTimeout(afficherInfo.t);
-      afficherInfo.t = setTimeout(function () { el.style.background = ''; }, 5000);
+      afficherInfo.t = setTimeout(function () { el.style.background = ''; }, message.length > 120 ? 12000 : 5000);
     }
     function afficherErreur(message) {
       document.getElementById('erreur').style.background = '';
@@ -385,7 +385,7 @@
       el.textContent = message;
       el.hidden = false;
       clearTimeout(afficherErreur.t);
-      afficherErreur.t = setTimeout(function () { el.hidden = true; }, 5000);
+      afficherErreur.t = setTimeout(function () { el.hidden = true; }, message.length > 120 ? 12000 : 5000);
     }
     function badgeStatut(r) {
       return r.statut === 'Validée'
@@ -502,6 +502,12 @@
     window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       invitationInstall = e;
+    });
+    window.addEventListener('appinstalled', function () {
+      invitationInstall = null;
+      afficherInfo('Appli installée ✅ Cherche « TCB Champ. » dans la liste de tes applis (glisse vers le haut). ' +
+        'Pour l\'avoir sur l\'écran d\'accueil : appui long sur l\'icône → Ajouter à l\'écran d\'accueil.');
+      setTimeout(rendre, 500);
     });
     if (!surAppsScript && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function () {});
