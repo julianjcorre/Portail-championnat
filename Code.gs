@@ -195,35 +195,46 @@ function getDonnees() {
 }
 
 /**
- * Enregistre la réponse d'un joueur à une rencontre.
+ * Enregistre la réponse d'un joueur à une ou plusieurs rencontres
+ * (un joueur de plusieurs équipes répond une fois pour toute la journée).
  * reponse : 'Présent', 'Absent', ou '' pour annuler.
  * Renvoie les réponses à jour de toutes les rencontres.
  */
-function repondre(idRencontre, nom, reponse) {
+function repondre(idsRencontres, nom, reponse) {
+  var ids = [].concat(idsRencontres).map(String);
+  if (!ids.length) throw new Error('Aucune rencontre indiquée.');
   if (reponse && REPONSES.indexOf(reponse) === -1) throw new Error('Réponse inconnue.');
 
   var nomsConnus = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
   if (nomsConnus.indexOf(nom) === -1) throw new Error('Joueur inconnu : ' + nom);
 
   var idsConnus = lireLignes_(ONGLET_RENCONTRES).map(function (l) { return String(l[0]); });
-  if (idsConnus.indexOf(idRencontre) === -1) throw new Error('Rencontre introuvable. Rechargez la page.');
+  ids.forEach(function (id) {
+    if (idsConnus.indexOf(id) === -1) throw new Error('Rencontre introuvable. Rechargez la page.');
+  });
 
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
   try {
     var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_REPONSES);
     var lignes = lireLignes_(ONGLET_REPONSES);
-    var index = -1;
-    for (var i = 0; i < lignes.length; i++) {
-      if (String(lignes[i][0]) === idRencontre && String(lignes[i][1]) === nom) { index = i; break; }
-    }
-    if (!reponse) {
-      if (index !== -1) sheet.deleteRow(index + 2);
-    } else if (index !== -1) {
-      sheet.getRange(index + 2, 3, 1, 2).setValues([[reponse, new Date()]]);
-    } else {
-      sheet.appendRow([idRencontre, nom, reponse, new Date()]);
-    }
+    var maintenant = new Date();
+    var aSupprimer = [];
+    ids.forEach(function (id) {
+      var index = -1;
+      for (var i = 0; i < lignes.length; i++) {
+        if (String(lignes[i][0]) === id && String(lignes[i][1]) === nom) { index = i; break; }
+      }
+      if (!reponse) {
+        if (index !== -1) aSupprimer.push(index + 2);
+      } else if (index !== -1) {
+        sheet.getRange(index + 2, 3, 1, 2).setValues([[reponse, maintenant]]);
+      } else {
+        sheet.appendRow([id, nom, reponse, maintenant]);
+      }
+    });
+    // Du bas vers le haut, pour ne pas décaler les lignes restant à supprimer.
+    aSupprimer.sort(function (x, y) { return y - x; }).forEach(function (ligne) { sheet.deleteRow(ligne); });
     SpreadsheetApp.flush();
   } finally {
     verrou.releaseLock();

@@ -17,7 +17,7 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
 
 1. Ils ouvrent le lien (navigateur du téléphone, pas de connexion).
 2. La 1re fois, ils touchent leur prénom dans « Qui es-tu ? ». Le téléphone s'en souvient.
-3. **Mes matchs** : un gros bouton « Je viens » / « Je ne viens pas » par rencontre. Toucher à nouveau annule la réponse. On voit le statut de la date, l'heure, domicile/extérieur, les infos, et qui vient / qui n'a pas répondu.
+3. **Mes matchs** : une carte par jour, avec un gros bouton « Je suis dispo » / « Pas dispo ». Un joueur de plusieurs équipes répond une seule fois pour la journée (la réponse vaut pour toutes ses rencontres du jour). Toucher à nouveau annule la réponse. On voit le statut de chaque date, l'heure, domicile/extérieur, les infos, et qui est dispo / qui n'a pas répondu.
 4. **Tout le club** : toutes les rencontres par jour, avec une alerte rouge quand il y a plus de rencontres à domicile que le seuil fixé (2 terrains).
 
 ## Côté bureau
@@ -31,7 +31,7 @@ Tout se gère dans la Google Sheet, la page se met à jour toute seule.
 | Réponses | ID rencontre, Nom, Réponse, Répondu le | Automatique |
 
 - Valider une date = passer le statut à « Validée ».
-- Équipes : Hommes 1, Hommes 2, Femmes. Joueur dans 2 équipes : « Hommes 1, Hommes 2 ».
+- Équipes : Hommes 1, Hommes 2, Femmes. Joueur dans 2 équipes : « Hommes 1, Hommes 2 » (cas de tous les hommes pour l'instant).
 - Noms : les prénoms du club. En cas de doublon, ajouter l'initiale (« Thomas G. »).
 - Heure : « 9h », « 9h30 » ou « 09:30 », tout est accepté.
 - Nouvelle rencontre : remplir une ligne en laissant l'ID vide, il se crée au prochain chargement de la page.
