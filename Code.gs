@@ -51,7 +51,8 @@ var ENTETES_SELECTION = ['ID rencontre', 'Nom', 'Rôle', 'Modifié le'];
 var LIEUX = ['Domicile', 'Extérieur'];
 var STATUTS = ['Validée', 'En attente'];
 var REPONSES = ['Présent', 'Absent'];
-var ROLES = ['Titulaire', 'Remplaçant'];
+// Nombre de positions de jeu (n°1, n°2…) dans la sélection d'une équipe.
+var NB_POSITIONS = 4;
 
 // ---------------------------------------------------------------------------
 // Menu dans la Sheet
@@ -439,10 +440,19 @@ function validerCodeCapitaine(adresse, code) {
   return { jeton: info.jeton };
 }
 
-/** Retenir un joueur pour une rencontre : role 'Titulaire', 'Remplaçant' ou '' pour le retirer. */
+/** 'N°1' … 'N°<NB_POSITIONS>' ou 'Remplaçant'. */
+function roleValide_(role) {
+  var m = /^N°(\d)$/.exec(role);
+  return role === 'Remplaçant' || (m && +m[1] >= 1 && +m[1] <= NB_POSITIONS);
+}
+
+/**
+ * Retenir un joueur pour une rencontre : role 'N°1'…'N°4', 'Remplaçant' ou '' pour le retirer.
+ * Une position n'appartient qu'à un joueur : la donner à un autre la retire au précédent.
+ */
 function definirSelection(jeton, idRencontre, nom, role) {
   verifierCapitaine_(jeton);
-  if (role && ROLES.indexOf(role) === -1) throw new Error('Rôle inconnu.');
+  if (role && !roleValide_(role)) throw new Error('Position inconnue.');
   if (!ligneRencontre_(idRencontre)) throw new Error('Rencontre introuvable. Rechargez la page.');
   var noms = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
   if (noms.indexOf(nom) === -1) throw new Error('Joueur inconnu : ' + nom);
@@ -462,6 +472,11 @@ function definirSelection(jeton, idRencontre, nom, role) {
       sheet.getRange(index + 2, 3, 1, 2).setValues([[role, new Date()]]);
     } else {
       sheet.appendRow([idRencontre, nom, role, new Date()]);
+    }
+    if (role && role !== 'Remplaçant') {
+      supprimerLignesSelection_(function (l) {
+        return String(l[0]) === idRencontre && String(l[1]) !== nom && String(l[2]) === role;
+      });
     }
     SpreadsheetApp.flush();
   } finally {
@@ -703,6 +718,7 @@ function getDonnees() {
     equipes: EQUIPES,
     groupes: GROUPES_INSCRIPTION.map(function (g) { return g.libelle; }),
     nbTerrains: NB_TERRAINS,
+    nbPositions: NB_POSITIONS,
     maxDomicileParJour: MAX_DOMICILE_PAR_JOUR,
     joueurs: joueurs,
     rencontres: rencontres,
@@ -894,7 +910,7 @@ function ongletSelection_() {
   return sheet;
 }
 
-/** { idRencontre: { nom: 'Titulaire' | 'Remplaçant' } } */
+/** { idRencontre: { nom: 'N°1' … | 'Remplaçant' } } */
 function lireSelection_() {
   var selection = {};
   if (!SpreadsheetApp.getActive().getSheetByName(ONGLET_SELECTION)) return selection;

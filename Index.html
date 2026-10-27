@@ -225,6 +225,14 @@
     .etapes li { margin-bottom: 10px; }
     .compo { background: var(--fond); border-radius: 10px; padding: 8px 10px; font-size: 14px; margin: 8px 0; }
     .compo b { color: var(--texte); }
+    .ordre { list-style: none; margin: 4px 0 6px; padding: 0; }
+    .ordre li { padding: 2px 0; }
+    .ordre li span { display: inline-block; min-width: 34px; font-weight: 700; color: var(--doux); }
+    .ordre li.moi-compo { font-weight: 700; }
+    .ordre li.moi-compo span { color: var(--texte); }
+    .positions { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 15px; }
+    .positions .num { font-weight: 700; }
+    .positions .libre { color: var(--doux); font-style: italic; }
     .retenu { display: inline-block; background: var(--noir); color: var(--jaune); font-weight: 700; font-size: 14px; border-radius: 999px; padding: 4px 12px; margin: 6px 0 2px; }
     .sel-joueur { padding: 10px 0; border-top: 1px solid var(--ligne); }
     .sel-joueur:first-child { border-top: 0; }
@@ -582,12 +590,25 @@
     }
 
     function blocComposition(r) {
-      var t = nomsRole(r.id, 'Titulaire'), rp = nomsRole(r.id, 'Remplaçant');
+      var t = ordreDeJeu(r.id), rp = nomsRole(r.id, 'Remplaçant');
       if (!t.length && !rp.length) return '';
       var monRole = selectionDe(r.id)[moi];
-      return (monRole ? '<div class="retenu">' + (monRole === 'Titulaire' ? '🏆 Tu es retenu dans l\'équipe' : '🔄 Tu es remplaçant') + '</div>' : '') +
-        '<div class="compo"><b>🏆 Équipe :</b> ' + esc(t.join(', ') || 'à venir') +
-        (rp.length ? '<br><b>🔄 Remplaçant' + (rp.length > 1 ? 's' : '') + ' :</b> ' + esc(rp.join(', ')) : '') + '</div>';
+      var badge = !monRole ? '' : monRole === 'Remplaçant' ? '🔄 Tu es remplaçant' :
+        /^N°\d$/.test(monRole) ? '🏆 Tu joues en n°' + monRole.slice(2) : '🏆 Tu es retenu dans l\'équipe';
+      return (badge ? '<div class="retenu">' + badge + '</div>' : '') +
+        '<div class="compo"><b>🏆 Ordre de jeu :</b>' + (t.length ? '<ol class="ordre">' + t.map(function (x) {
+          return '<li' + (x.nom === moi ? ' class="moi-compo"' : '') + '><span>' + esc(x.n ? 'n°' + x.n : '•') + '</span> ' + esc(x.nom) + '</li>';
+        }).join('') + '</ol>' : ' à venir') +
+        (rp.length ? '<b>🔄 Remplaçant' + (rp.length > 1 ? 's' : '') + ' :</b> ' + esc(rp.join(', ')) : '') + '</div>';
+    }
+
+    /** Joueurs retenus dans l'ordre de jeu : [{ n: 1, nom }, …] (ancien rôle « Titulaire » en fin, sans numéro). */
+    function ordreDeJeu(id) {
+      var sel = selectionDe(id);
+      return Object.keys(sel)
+        .filter(function (nom) { return sel[nom] !== 'Remplaçant'; })
+        .map(function (nom) { var m = /^N°(\d)$/.exec(sel[nom]); return { n: m ? +m[1] : 0, nom: nom }; })
+        .sort(function (a, b) { return (a.n || 99) - (b.n || 99) || a.nom.localeCompare(b.nom, 'fr'); });
     }
 
     function ligneNoms(titre, noms) {
@@ -857,9 +878,9 @@
       html += '<p class="sous">Choisis un match pour composer l\'équipe à partir des dispos.</p>';
       html += parJour(donnees.rencontres).map(function (j) {
         return '<div class="carte"><p class="jour">' + esc(dateLongue(j.date)) + '</p>' + j.rencontres.map(function (r) {
-          var t = nomsRole(r.id, 'Titulaire').length, rp = nomsRole(r.id, 'Remplaçant').length, d = bilan(r).presents.length;
+          var t = ordreDeJeu(r.id).length, rp = nomsRole(r.id, 'Remplaçant').length, d = bilan(r).presents.length;
           return '<div class="rencontre"><div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
-            '<div class="ligne-info">✅ ' + d + ' dispo' + (d > 1 ? 's' : '') + ' · 🏆 ' + t + ' titulaire' + (t > 1 ? 's' : '') +
+            '<div class="ligne-info">✅ ' + d + ' dispo' + (d > 1 ? 's' : '') + ' · 🏆 ' + t + '/' + donnees.nbPositions + ' positions' +
             (rp ? ' · 🔄 ' + rp + ' remplaçant' + (rp > 1 ? 's' : '') : '') + '</div>' +
             '<div class="ligne-cap"><button data-sel="' + esc(r.id) + '">🏆 Composer l\'équipe</button></div></div>';
         }).join('') + '</div>';
@@ -876,6 +897,17 @@
         '<h2>' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</h2>' +
         '<p class="sous">' + esc(dateLongue(r.date)) + ' · ' + esc(r.heure || 'heure à venir') + ' · ' +
         (r.lieu === 'Domicile' ? '🏠 Domicile' : r.lieu === 'Extérieur' ? '🚗 Extérieur' : 'lieu à venir') + '</p>';
+      var nb = donnees.nbPositions || 4, occupant = {};
+      Object.keys(sel).forEach(function (nom) { occupant[sel[nom]] = nom; });
+      var pos = [];
+      for (var k = 1; k <= nb; k++) pos.push(k);
+      html += '<div class="carte"><p class="groupe-titre" style="margin-top:0">🏆 Ordre de jeu</p><div class="positions">' +
+        pos.map(function (k) {
+          var nom = occupant['N°' + k];
+          return '<span class="num">n°' + k + '</span>' + (nom ? '<span>' + esc(nom) + '</span>' : '<span class="libre">à choisir</span>');
+        }).join('') +
+        (nomsRole(r.id, 'Remplaçant').length ? '<span class="num">🔄</span><span>' + esc(nomsRole(r.id, 'Remplaçant').join(', ')) + '</span>' : '') +
+        '</div></div>';
       var groupes = [['Présent', '✅ Dispos'], ['', '… Pas encore répondu'], ['Absent', '❌ Pas dispos']];
       var joueurs = joueursEquipe(r.equipe);
       html += groupes.map(function (g) {
@@ -886,7 +918,7 @@
           var ailleurs = autresDuJour.filter(function (x) { return selectionDe(x.id)[j.nom]; })[0];
           return '<div class="sel-joueur"><div class="tete"><b>' + esc(j.nom) + '</b>' +
             (ailleurs ? '<span class="avert">⚠️ déjà retenu en ' + esc(ailleurs.equipe) + '</span>' : '') + '</div>' +
-            '<div class="choix">' + [['Titulaire', '🏆 Titulaire'], ['Remplaçant', '🔄 Remplaçant'], ['', '—']].map(function (c) {
+            '<div class="choix">' + pos.map(function (k) { return ['N°' + k, 'n°' + k]; }).concat([['Remplaçant', '🔄 Remp.'], ['', '—']]).map(function (c) {
               return '<button type="button" data-role="' + c[0] + '" data-joueur="' + esc(j.nom) + '"' + (role === c[0] ? ' class="choisi"' : '') + '>' + c[1] + '</button>';
             }).join('') + '</div></div>';
         }).join('') + '</div>';
@@ -898,11 +930,12 @@
     }
 
     function texteComposition(r) {
-      var t = nomsRole(r.id, 'Titulaire'), rp = nomsRole(r.id, 'Remplaçant');
+      var t = ordreDeJeu(r.id), rp = nomsRole(r.id, 'Remplaçant');
+      var chiffres = ['', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
       return '🎾 TC Bazoges – ' + r.equipe + ' vs ' + (r.adversaire || 'adversaire à venir') + '\n' +
         '📅 ' + dateLongue(r.date) + (r.heure ? ' · ' + r.heure : '') +
         (r.lieu === 'Domicile' ? ' · 🏠 Domicile' : r.lieu === 'Extérieur' ? ' · 🚗 Extérieur' : '') + '\n' +
-        '🏆 Équipe : ' + (t.length ? t.join(', ') : 'à venir') + '\n' +
+        '🏆 Ordre de jeu :' + (t.length ? '\n' + t.map(function (x) { return (chiffres[x.n] || '•') + ' ' + x.nom; }).join('\n') : ' à venir') + '\n' +
         (rp.length ? '🔄 Remplaçant' + (rp.length > 1 ? 's' : '') + ' : ' + rp.join(', ') + '\n' : '') +
         (r.infos ? 'ℹ️ ' + r.infos + '\n' : '') +
         '👉 ' + (surAppsScript ? URL_API : location.origin + location.pathname);
@@ -930,6 +963,10 @@
       sel[selId] = sel[selId] || {};
       var ancien = sel[selId][nom] || '';
       if (ancien === role) return;
+      var avant = Object.assign({}, sel[selId]);
+      if (role && role !== 'Remplaçant') {
+        Object.keys(sel[selId]).forEach(function (n) { if (n !== nom && sel[selId][n] === role) delete sel[selId][n]; });
+      }
       if (role) sel[selId][nom] = role; else delete sel[selId][nom];
       rendre();
       var id = selId;
@@ -941,7 +978,7 @@
         })
         .withFailureHandler(function (err) {
           selEnCours--;
-          if (ancien) sel[id][nom] = ancien; else delete sel[id][nom];
+          sel[id] = avant;
           rendre();
           var msg = err && err.message ? err.message : 'problème de connexion';
           if (/expirée/.test(msg)) deconnexionCap();
