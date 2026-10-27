@@ -105,29 +105,22 @@ function installerOnglets() {
   );
 }
 
-// Calendrier officiel saison 2026-2027 (PDF « Calendrier des rencontres »).
+// Calendrier officiel saison 2026-2027 (PDF « Calendrier des rencontres »), équipes Hommes uniquement.
 var CALENDRIER = [
-  ['2026-10-18', 'Femmes', 'Extérieur', 'Montaigu 2'],
   ['2026-10-18', 'Hommes 1', 'Extérieur', 'TC Les Achards 2'],
   ['2026-10-18', 'Hommes 2', 'Extérieur', 'St Etienne Palluau 1'],
   ['2026-11-01', 'Hommes 2', 'Domicile', 'TC Flavois'],
-  ['2026-11-08', 'Femmes', 'Domicile', 'TC Mortagnais 1'],
   ['2026-11-08', 'Hommes 1', 'Domicile', 'Ste Hermine TC 1'],
   ['2026-11-15', 'Hommes 2', 'Domicile', 'TC Rive de Lion 1'],
-  ['2026-11-22', 'Femmes', 'Domicile', 'TC Herbretais 2'],
   ['2026-11-22', 'Hommes 1', 'Extérieur', 'TC Montaigu 5'],
-  ['2026-12-06', 'Femmes', 'Extérieur', 'TC Entente Yonnaise'],
   ['2026-12-06', 'Hommes 1', 'Domicile', 'TC Montaigu 4'],
   ['2026-12-06', 'Hommes 2', 'Extérieur', 'TC Bellevigny 2'],
-  ['2027-01-17', 'Femmes', 'Domicile', "Smash L'Herbergement 1"],
   ['2027-01-17', 'Hommes 1', 'Extérieur', 'TC Talmont 2'],
   ['2027-01-17', 'Hommes 2', 'Domicile', 'TC Mouchampais 2'],
-  ['2027-01-31', 'Femmes', 'Extérieur', 'Les Renards de Landeronde 1'],
   ['2027-01-31', 'Hommes 1', 'Domicile', 'Atlantique TC 3'],
   ['2027-01-31', 'Hommes 2', 'Extérieur', 'TC Macheen 2'],
   ['2027-02-07', 'Hommes 2', 'Domicile', 'TC Loulaysien 3'],
   ['2027-02-14', 'Hommes 1', 'Domicile', 'TC des Clouzeaux 2'],
-  ['2027-02-21', 'Femmes', 'Domicile', 'TC Dompierroise 2'],
 ];
 
 /**
