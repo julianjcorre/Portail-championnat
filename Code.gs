@@ -55,6 +55,7 @@ function onOpen() {
     .createMenu('🎾 ' + NOM_CLUB)
     .addItem('Installer les onglets', 'installerOnglets')
     .addItem('Ouvrir la page des joueurs', 'afficherLienPage')
+    .addItem('🔑 Autoriser l\'envoi des mails', 'autoriserScript')
     .addSeparator()
     .addItem('Importer le calendrier 2026-2027', 'importerCalendrier')
     .addToUi();
@@ -192,6 +193,15 @@ function importerCalendrier() {
 
   ui.alert('Calendrier importé : ' + ajoutees + ' rencontre(s) ajoutée(s), ' + misesAJour + ' mise(s) à jour, ' +
     supprimees + ' supprimée(s).\n\nPassez le statut à « Validée » à réception des convocations.');
+}
+
+/**
+ * À lancer une fois avec le compte du club : déclenche l'écran d'autorisation
+ * Google (dont l'envoi des mails de connexion des capitaines).
+ */
+function autoriserScript() {
+  var quota = MailApp.getRemainingDailyQuota();
+  SpreadsheetApp.getUi().alert('Autorisations OK. Mails de connexion encore possibles aujourd\'hui : ' + quota + '.');
 }
 
 function afficherLienPage() {
