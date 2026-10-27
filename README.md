@@ -57,6 +57,8 @@ Vignettes :
 
 Sécurité : les fonctions de gestion exigent un jeton valable, lié à une adresse encore présente dans `CAPITAINES` (retirer une adresse coupe son accès). Les jetons sont stockés dans les propriétés du script. Ne pas transférer le mail de connexion.
 
+Repères visuels : Hommes 1 en bleu doux, Hommes 2 en violet doux (pastille du nom + trait le long du match, sur toutes les vues). Filtre Toutes / Hommes 1 / Hommes 2 en haut de la page des joueurs, mémorisé sur le téléphone.
+
 ## Côté bureau
 
 Tout se gère dans la Google Sheet, la page se met à jour toute seule.
