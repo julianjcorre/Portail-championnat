@@ -406,10 +406,10 @@
     function badgeTerrains(r) {
       return r.terrains ? '<span class="badge">🎾 ' + r.terrains + ' terrain' + (r.terrains === '2' ? 's' : '') + '</span>' : '';
     }
-    /** Message rassurant (2 terrains) ou d'avertissement (1 terrain) sur la durée de la journée. */
+    /** Nombre de terrains, bien visible (vert : 2, orange : 1). */
     function messageTerrains(r) {
-      if (r.terrains === '2') return '<div class="terrains terrains-2">🎾 <b>2 terrains</b> : les matchs se jouent en parallèle, la journée sera plus courte.</div>';
-      if (r.terrains === '1') return '<div class="terrains terrains-1">🎾 <b>1 seul terrain</b> : les matchs s\'enchaînent, prévois la journée.</div>';
+      if (r.terrains === '2') return '<div class="terrains terrains-2">🎾 <b>2 terrains</b></div>';
+      if (r.terrains === '1') return '<div class="terrains terrains-1">🎾 <b>1 terrain</b></div>';
       return '';
     }
     function badgeLieu(r) {
