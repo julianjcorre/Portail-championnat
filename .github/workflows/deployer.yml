@@ -1,8 +1,6 @@
 # Met en ligne le code dans Apps Script à chaque push sur main.
-# Secrets nécessaires (Settings → Secrets and variables → Actions) :
+# Seul secret nécessaire (Settings → Secrets and variables → Actions) :
 #   CLASPRC_JSON   contenu de ~/.clasprc.json après `clasp login` (compte Google du club)
-#   SCRIPT_ID      Apps Script → Paramètres du projet → ID du script
-#   DEPLOYMENT_ID  Déployer → Gérer les déploiements → ID de déploiement (garde la même URL)
 name: Déployer sur Apps Script
 
 on:
@@ -10,6 +8,11 @@ on:
     branches: [main]
     paths: [Code.gs, Index.html, appsscript.json, .github/workflows/deployer.yml]
   workflow_dispatch:
+
+# Identifiants du projet Apps Script (pas secrets : l'ID de déploiement figure dans l'URL publique).
+env:
+  SCRIPT_ID: 1lIi5_dYHk-9ij1H6QhYfyYkGlE8aBEsTzdLZfdQ86XkmvJOQrmHeF_eF  # Paramètres du projet → ID du script
+  DEPLOYMENT_ID: A_REMPLIR  # Gérer les déploiements → ID de déploiement (garde la même URL)
 
 concurrency:
   group: deploiement-apps-script
@@ -32,10 +35,9 @@ jobs:
       - name: Préparer les identifiants
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-          SCRIPT_ID: ${{ secrets.SCRIPT_ID }}
         run: |
-          if [ -z "$CLASPRC_JSON" ] || [ -z "$SCRIPT_ID" ]; then
-            echo "::error::Secrets CLASPRC_JSON et SCRIPT_ID manquants (voir README)."
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::Secret CLASPRC_JSON manquant (voir README)."
             exit 1
           fi
           printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
@@ -45,11 +47,9 @@ jobs:
         run: clasp push --force
 
       - name: Mettre à jour le déploiement
-        env:
-          DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID }}
         run: |
-          if [ -z "$DEPLOYMENT_ID" ]; then
-            echo "::warning::Secret DEPLOYMENT_ID manquant : code envoyé mais page en ligne inchangée."
+          if [ "$DEPLOYMENT_ID" = "A_REMPLIR" ]; then
+            echo "::warning::DEPLOYMENT_ID à remplir dans ce fichier : code envoyé mais page en ligne inchangée."
             exit 0
           fi
           clasp deploy --deploymentId "$DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA::7}"

@@ -60,12 +60,8 @@ Une fois réglé, chaque modification poussée sur `main` est envoyée dans Apps
    clasp login
    ```
    Se connecter avec le compte Google du club. Cela crée le fichier `.clasprc.json` dans le dossier personnel (`~/.clasprc.json` sur Mac/Linux, `C:\Users\<nom>\.clasprc.json` sur Windows).
-3. Dans GitHub : dépôt → **Settings → Secrets and variables → Actions → New repository secret**, créer :
-   | Secret | Valeur |
-   | --- | --- |
-   | `CLASPRC_JSON` | tout le contenu du fichier `.clasprc.json` |
-   | `SCRIPT_ID` | Apps Script → ⚙️ Paramètres du projet → ID du script |
-   | `DEPLOYMENT_ID` | Apps Script → Déployer → Gérer les déploiements → ID de déploiement |
+3. Dans GitHub : dépôt → **Settings → Secrets and variables → Actions → New repository secret**, créer `CLASPRC_JSON` avec tout le contenu du fichier `.clasprc.json` (sous Windows : `type %USERPROFILE%\.clasprc.json | clip` puis Ctrl+V).
+   L'ID du script et l'ID de déploiement ne sont pas secrets : ils sont écrits en haut de `.github/workflows/deployer.yml`.
 4. Onglet **Actions** → « Déployer sur Apps Script » → **Run workflow** pour vérifier que tout est vert.
 
 > ⚠️ `.clasprc.json` donne accès aux scripts du compte Google du club : il ne va que dans les secrets GitHub, jamais dans le code ni dans un message. Pour couper l'accès : https://myaccount.google.com/permissions → retirer « clasp ».
