@@ -116,6 +116,8 @@
       position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 3;
       background: var(--rouge); color: #fff; border-radius: 12px; padding: 12px 14px; font-weight: 600;
     }
+    .pied { text-align: center; margin: 8px 0 24px; font-size: 14px; }
+    .pied a { color: var(--doux); }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -246,7 +248,8 @@
 
     /** Tous les matchs du club, par date ; chacun peut répondre sur chaque match. */
     function ecranListe() {
-      if (!donnees.rencontres.length) return '<div class="vide">Aucune rencontre à venir.</div>';
+      var pied = '<p class="pied"><a href="' + esc(donnees.lienCapitaines) + '" target="_blank" rel="noopener">⚙️ Espace capitaines</a></p>';
+      if (!donnees.rencontres.length) return '<div class="vide">Aucune rencontre à venir.</div>' + pied;
       return parJour(donnees.rencontres).map(function (j) {
         var domicile = j.rencontres.filter(function (r) { return r.lieu === 'Domicile'; }).length;
         var html = '<div class="carte"><p class="jour">' + esc(dateLongue(j.date)) + '</p>';
@@ -255,7 +258,7 @@
             donnees.nbTerrains + ' terrains.</div>';
         }
         return html + j.rencontres.map(carteRencontre).join('') + '</div>';
-      }).join('');
+      }).join('') + pied;
     }
 
     function parJour(rencontres) {

@@ -45,6 +45,8 @@ var REPONSES = ['Présent', 'Absent'];
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🎾 ' + NOM_CLUB)
+    .addItem('⚙️ Paramètres capitaines', 'ouvrirParametres')
+    .addSeparator()
     .addItem('Installer les onglets', 'installerOnglets')
     .addItem('Ouvrir la page des joueurs', 'afficherLienPage')
     .addSeparator()
@@ -57,6 +59,7 @@ function onOpen() {
  * et quelques exemples. Ne touche pas aux onglets qui existent déjà.
  */
 function installerOnglets() {
+  verifierCapitaine_();
   var ss = SpreadsheetApp.getActive();
   var dansUneSemaine = new Date();
   dansUneSemaine.setDate(dansUneSemaine.getDate() + 7);
@@ -130,6 +133,7 @@ var CALENDRIER = [
  * Propose ensuite de supprimer les rencontres à venir absentes du calendrier.
  */
 function importerCalendrier() {
+  verifierCapitaine_();
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone();
@@ -211,6 +215,116 @@ function nouvelId_() {
 }
 
 // ---------------------------------------------------------------------------
+// Paramètres capitaines (panneau dans la Sheet)
+//
+// Seules les personnes qui peuvent modifier la Sheet (toi + les capitaines
+// avec qui elle est partagée) y ont accès. Ces fonctions sont aussi
+// appelables depuis la page publique : verifierCapitaine_() les protège.
+// ---------------------------------------------------------------------------
+
+function ouvrirParametres() {
+  verifierCapitaine_();
+  SpreadsheetApp.getUi().showSidebar(
+    HtmlService.createHtmlOutputFromFile('Capitaines').setTitle('⚙️ Paramètres capitaines'));
+}
+
+/** Refuse l'appel si la personne n'est pas propriétaire ou éditrice de la Sheet. */
+function verifierCapitaine_() {
+  // Vide pour un visiteur de la page publique (le script s'exécute alors en tant que propriétaire).
+  var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  var ss = SpreadsheetApp.getActive();
+  var autorises = ss.getEditors().concat([ss.getOwner()])
+    .filter(Boolean)
+    .map(function (u) { return String(u.getEmail()).toLowerCase(); });
+  if (!email || autorises.indexOf(email) === -1) {
+    throw new Error('Réservé aux capitaines : ouvrez la Google Sheet avec votre compte.');
+  }
+  return email;
+}
+
+function getDonneesCapitaines() {
+  verifierCapitaine_();
+  var reponses = lireReponses_();
+  return {
+    equipes: EQUIPES,
+    lieux: LIEUX,
+    statuts: STATUTS,
+    rencontres: lireRencontres_().map(function (r) {
+      r.nbReponses = Object.keys(reponses[r.id] || {}).length;
+      return r;
+    }),
+  };
+}
+
+/** Ajoute (sans id) ou modifie (avec id) une rencontre. */
+function enregistrerRencontre(r) {
+  verifierCapitaine_();
+  var m = String(r.date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) throw new Error('Date invalide.');
+  if (EQUIPES.indexOf(r.equipe) === -1) throw new Error('Équipe inconnue.');
+  if (r.lieu && LIEUX.indexOf(r.lieu) === -1) throw new Error('Lieu inconnu.');
+  if (STATUTS.indexOf(r.statut) === -1) throw new Error('Statut inconnu.');
+  var valeurs = [
+    new Date(+m[1], +m[2] - 1, +m[3]),
+    formaterHeure_(r.heure || ''),
+    r.equipe,
+    String(r.adversaire || '').trim(),
+    r.lieu || '',
+    r.statut,
+    String(r.infos || '').trim(),
+  ];
+
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_RENCONTRES);
+    if (r.id) {
+      var ligne = ligneRencontre_(r.id);
+      if (!ligne) throw new Error('Rencontre introuvable. Rechargez le panneau.');
+      sheet.getRange(ligne, 2, 1, valeurs.length).setValues([valeurs]);
+    } else {
+      sheet.appendRow([nouvelId_()].concat(valeurs));
+    }
+    var derniere = sheet.getLastRow();
+    if (derniere > 2) sheet.getRange(2, 1, derniere - 1, sheet.getLastColumn()).sort([{ column: 2 }, { column: 4 }]);
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return getDonneesCapitaines();
+}
+
+/** Supprime une rencontre et les réponses des joueurs à cette rencontre. */
+function supprimerRencontre(id) {
+  verifierCapitaine_();
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var ligne = ligneRencontre_(id);
+    if (!ligne) throw new Error('Rencontre introuvable. Rechargez le panneau.');
+    ss.getSheetByName(ONGLET_RENCONTRES).deleteRow(ligne);
+
+    var reponses = ss.getSheetByName(ONGLET_REPONSES);
+    lireLignes_(ONGLET_REPONSES)
+      .map(function (l, i) { return String(l[0]) === id ? i + 2 : 0; })
+      .filter(Boolean)
+      .reverse()
+      .forEach(function (n) { reponses.deleteRow(n); });
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return getDonneesCapitaines();
+}
+
+function ligneRencontre_(id) {
+  var ids = lireLignes_(ONGLET_RENCONTRES).map(function (l) { return String(l[0]); });
+  var i = ids.indexOf(String(id));
+  return i === -1 ? 0 : i + 2;
+}
+
+// ---------------------------------------------------------------------------
 // Page web
 // ---------------------------------------------------------------------------
 
@@ -240,37 +354,7 @@ function getDonnees() {
     })
     .sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
 
-  var hier = new Date();
-  hier.setDate(hier.getDate() - 1);
-  var depuis = Utilities.formatDate(hier, tz, 'yyyy-MM-dd');
-
-  var lignes = completerIds_();
-  // L'heure est lue telle qu'affichée : les cellules au format heure sont
-  // décalées de quelques minutes si on passe par un objet Date.
-  var heures = lignes.length
-    ? ss.getSheetByName(ONGLET_RENCONTRES).getRange(2, 3, lignes.length, 1).getDisplayValues()
-    : [];
-
-  var rencontres = lignes
-    .map(function (l, i) { return { ligne: l, heure: heures[i][0] }; })
-    .filter(function (x) { return x.ligne[1] instanceof Date; })
-    .map(function (x) {
-      var l = x.ligne;
-      return {
-        id: String(l[0]),
-        date: Utilities.formatDate(l[1], tz, 'yyyy-MM-dd'),
-        heure: formaterHeure_(x.heure),
-        equipe: String(l[3]).trim(),
-        adversaire: String(l[4]).trim(),
-        lieu: String(l[5]).trim(),
-        statut: String(l[6]).trim() === 'Validée' ? 'Validée' : 'En attente',
-        infos: String(l[7]).trim(),
-      };
-    })
-    .filter(function (r) { return r.date >= depuis; })
-    .sort(function (a, b) {
-      return (a.date + a.heure + a.equipe).localeCompare(b.date + b.heure + b.equipe);
-    });
+  var rencontres = lireRencontres_();
 
   return {
     equipes: EQUIPES,
@@ -280,6 +364,7 @@ function getDonnees() {
     joueurs: joueurs,
     rencontres: rencontres,
     reponses: lireReponses_(),
+    lienCapitaines: ss.getUrl(),
   };
 }
 
@@ -378,6 +463,43 @@ function cleNom_(texte) {
 // ---------------------------------------------------------------------------
 // Lecture de la Sheet
 // ---------------------------------------------------------------------------
+
+/** Rencontres à venir (à partir d'hier), triées par date, heure et équipe. */
+function lireRencontres_() {
+  var ss = SpreadsheetApp.getActive();
+  var tz = ss.getSpreadsheetTimeZone();
+  var hier = new Date();
+  hier.setDate(hier.getDate() - 1);
+  var depuis = Utilities.formatDate(hier, tz, 'yyyy-MM-dd');
+
+  var lignes = completerIds_();
+  // L'heure est lue telle qu'affichée : les cellules au format heure sont
+  // décalées de quelques minutes si on passe par un objet Date.
+  var heures = lignes.length
+    ? ss.getSheetByName(ONGLET_RENCONTRES).getRange(2, 3, lignes.length, 1).getDisplayValues()
+    : [];
+
+  return lignes
+    .map(function (l, i) { return { ligne: l, heure: heures[i][0] }; })
+    .filter(function (x) { return x.ligne[1] instanceof Date; })
+    .map(function (x) {
+      var l = x.ligne;
+      return {
+        id: String(l[0]),
+        date: Utilities.formatDate(l[1], tz, 'yyyy-MM-dd'),
+        heure: formaterHeure_(x.heure),
+        equipe: String(l[3]).trim(),
+        adversaire: String(l[4]).trim(),
+        lieu: String(l[5]).trim(),
+        statut: String(l[6]).trim() === 'Validée' ? 'Validée' : 'En attente',
+        infos: String(l[7]).trim(),
+      };
+    })
+    .filter(function (r) { return r.date >= depuis; })
+    .sort(function (a, b) {
+      return (a.date + a.heure + a.equipe).localeCompare(b.date + b.heure + b.equipe);
+    });
+}
 
 /** Lignes de données d'un onglet (sans l'en-tête). */
 function lireLignes_(nomOnglet) {

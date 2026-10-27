@@ -10,6 +10,7 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
 | --- | --- |
 | `Code.gs` | Côté serveur : menu de la Sheet, lecture des onglets, enregistrement des réponses. Réglages en haut du fichier. |
 | `Index.html` | La page affichée aux joueurs (mobile d'abord). |
+| `Capitaines.html` | Panneau « ⚙️ Paramètres capitaines » dans la Sheet. |
 | `appsscript.json` | Manifeste Apps Script (fuseau Europe/Paris, accès web), envoyé par la mise en ligne automatique. |
 | `.github/workflows/deployer.yml` | Mise en ligne automatique à chaque push sur `main`. |
 
@@ -21,6 +22,22 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
    - Nouveau nom : la page demande « Hommes » ou « Femmes » et l'ajoute à l'onglet Joueurs (Hommes → Hommes 1 et Hommes 2), avec la date d'inscription.
 3. Une seule liste : **tous les matchs du club**, par date. Sur chaque match, un gros bouton « Je suis dispo » / « Pas dispo » (n'importe quel joueur peut répondre sur n'importe quel match). Toucher à nouveau annule la réponse.
 4. Pour chaque match : statut de la date, heure, domicile/extérieur, infos, et la liste des dispos / pas dispos / sans réponse (joueurs de l'équipe concernée). Alerte rouge quand il y a trop de rencontres à domicile le même jour (2 terrains).
+
+## Côté capitaines
+
+Seules les personnes avec qui la Sheet est partagée **en modification** (le compte du club + les 2 capitaines) peuvent gérer les rencontres. La sécurité repose sur le partage Google : les joueurs n'ont pas accès à la Sheet.
+
+1. Partager la Sheet : bouton **Partager** → adresse Gmail de chaque capitaine → **Éditeur**.
+2. Le capitaine ouvre la Sheet (lien « ⚙️ Espace capitaines » en bas de la page des joueurs, ou le lien reçu par mail), connecté avec son compte Google.
+3. Menu **🎾 TC Bazoges → ⚙️ Paramètres capitaines** : un panneau s'ouvre à droite.
+   - **+ Ajouter une rencontre** : date, heure, équipe, adversaire, lieu, statut, infos.
+   - **Modifier** / **Supprimer** une rencontre (supprime aussi les réponses des joueurs à cette rencontre).
+   - **Valider** / **Remettre en attente** en un clic.
+4. La 1re fois, Google demande au capitaine d'autoriser le script (écran « Google n'a pas validé cette application » → Paramètres avancés → Accéder).
+
+Le panneau fonctionne sur ordinateur. Sur téléphone, l'appli Google Sheets n'affiche pas les menus de script : modifier directement les cases de l'onglet Rencontres.
+
+Les fonctions du panneau (et Installer les onglets / Importer le calendrier) vérifient que la personne connectée est propriétaire ou éditrice de la Sheet : elles sont refusées depuis la page publique.
 
 ## Côté bureau
 

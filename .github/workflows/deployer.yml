@@ -6,7 +6,7 @@ name: Déployer sur Apps Script
 on:
   push:
     branches: [main]
-    paths: [Code.gs, Index.html, appsscript.json, .github/workflows/deployer.yml]
+    paths: [Code.gs, Index.html, Capitaines.html, appsscript.json, .claspignore, .github/workflows/deployer.yml]
   workflow_dispatch:
 
 # Identifiants du projet Apps Script (pas secrets : l'ID de déploiement figure dans l'URL publique).
