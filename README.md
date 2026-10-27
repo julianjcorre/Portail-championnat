@@ -10,7 +10,6 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
 | --- | --- |
 | `Code.gs` | Côté serveur : menu de la Sheet, lecture des onglets, enregistrement des réponses. Réglages en haut du fichier. |
 | `Index.html` | La page affichée aux joueurs (mobile d'abord). |
-| `Capitaines.html` | Panneau « ⚙️ Paramètres capitaines » dans la Sheet. |
 | `appsscript.json` | Manifeste Apps Script (fuseau Europe/Paris, accès web), envoyé par la mise en ligne automatique. |
 | `.github/workflows/deployer.yml` | Mise en ligne automatique à chaque push sur `main`. |
 
@@ -25,23 +24,24 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
 
 ## Côté capitaines
 
-Seuls le propriétaire de la Sheet (compte du club) et les comptes listés dans `CAPITAINES` (en haut de `Code.gs`) peuvent gérer les rencontres :
+Espace capitaines **dans la page des joueurs** (lien « ⚙️ Espace capitaines » en bas), sans passer par la Sheet. Réservé au compte du club (propriétaire de la Sheet) et aux adresses listées dans `CAPITAINES` en haut de `Code.gs` :
 
 - julian.jcorre@gmail.com
 - florent.guery1@gmail.com
 - jamin.matthieu85@gmail.com
 
-1. Donner l'accès : avec le compte du club, menu **🎾 → 👥 Donner l'accès aux capitaines** (ajoute les capitaines comme éditeurs de la Sheet ; Google leur envoie un mail).
-2. Le capitaine ouvre la Sheet (lien « ⚙️ Espace capitaines » en bas de la page des joueurs, ou le lien reçu par mail), connecté avec son compte Google.
-3. Menu **🎾 TC Bazoges → ⚙️ Paramètres capitaines** : un panneau s'ouvre à droite.
-   - **+ Ajouter une rencontre** : date, heure, équipe, adversaire, lieu, statut, infos.
-   - **Modifier** / **Supprimer** une rencontre (supprime aussi les réponses des joueurs à cette rencontre).
-   - **Valider** / **Remettre en attente** en un clic.
-4. La 1re fois, Google demande au capitaine d'autoriser le script (écran « Google n'a pas validé cette application » → Paramètres avancés → Accéder).
+Connexion :
+1. « ⚙️ Espace capitaines » → taper son adresse e-mail → « Recevoir mon lien de connexion ».
+2. Si l'adresse est dans la liste, un mail part du compte du club avec un lien personnel (`…/exec?capitaine=<jeton>`). La page répond la même chose pour toute adresse, pour ne pas révéler qui est capitaine. 5 mails maximum par adresse et par jour.
+3. Ouvrir le lien sur son téléphone : le téléphone garde la connexion (1 an, ou jusqu'à « Se déconnecter »).
 
-Le panneau fonctionne sur ordinateur. Sur téléphone, l'appli Google Sheets n'affiche pas les menus de script : modifier directement les cases de l'onglet Rencontres.
+Vignettes :
+- **➕ Créer une rencontre** : date, heure, équipe, adversaire, lieu, statut, infos.
+- **📅 Gérer les rencontres** : modifier, valider / remettre en attente, supprimer (supprime aussi les réponses à ce match).
+- **👥 Dispos des joueurs** : pour chaque match, qui est dispo, pas dispo, sans réponse.
+- **🎾 Page des joueurs**.
 
-Les fonctions du panneau (et Installer les onglets / Importer le calendrier / Donner l'accès) vérifient que le compte connecté est le propriétaire ou un capitaine : refusées pour tout autre compte et depuis la page publique.
+Sécurité : les fonctions de gestion exigent un jeton valable, lié à une adresse encore présente dans `CAPITAINES` (retirer une adresse coupe son accès). Les jetons sont stockés dans les propriétés du script. Ne pas transférer le mail de connexion.
 
 ## Côté bureau
 

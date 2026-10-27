@@ -122,8 +122,48 @@
       position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 3;
       background: var(--rouge); color: #fff; border-radius: 12px; padding: 12px 14px; font-weight: 600;
     }
-    .pied { text-align: center; margin: 8px 0 24px; font-size: 14px; }
-    .pied a { color: var(--doux); }
+    .pied { text-align: center; margin: 8px 0 24px; }
+    .pied button, .lien {
+      background: none; border: 0; color: var(--doux); text-decoration: underline; font: inherit; font-size: 15px; padding: 12px 0; cursor: pointer;
+    }
+    /* Espace capitaines */
+    .cap h2 { margin: 4px 0 2px; font-size: 22px; }
+    .cap .sous { color: var(--doux); margin: 0 0 16px; font-size: 15px; }
+    .tuiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tuile {
+      display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 10px;
+      min-height: 120px; padding: 14px; text-align: left; cursor: pointer;
+      background: var(--carte); color: var(--texte); border: 1px solid var(--ligne); border-left: 5px solid var(--jaune);
+      border-radius: 14px; font-family: inherit;
+    }
+    .tuile .icone { font-size: 30px; line-height: 1; }
+    .tuile b { font-size: 17px; }
+    .tuile small { display: block; color: var(--doux); font-size: 13px; margin-top: 2px; font-weight: 400; }
+    .tuile.noire { background: var(--noir); color: #fff; border-color: var(--noir); border-left-color: var(--jaune); }
+    .tuile.noire small { color: #c9c9c4; }
+    .champ { margin-bottom: 12px; }
+    .champ label { display: block; font-weight: 600; margin-bottom: 6px; }
+    .champ input, .champ select, .champ textarea {
+      width: 100%; min-height: 50px; border-radius: 12px; border: 2px solid var(--ligne); padding: 0 12px;
+      background: var(--carte); color: var(--texte); font-size: 17px; font-family: inherit;
+    }
+    .champ textarea { min-height: 80px; padding: 10px 12px; resize: vertical; }
+    .champ input:focus, .champ select:focus, .champ textarea:focus { outline: none; border-color: var(--jaune-fonce); }
+    .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .choix { display: flex; gap: 8px; flex-wrap: wrap; }
+    .choix button {
+      flex: 1; min-height: 46px; border-radius: 12px; border: 2px solid var(--ligne); background: var(--carte);
+      color: var(--texte); font-weight: 600; font-size: 15px; font-family: inherit; cursor: pointer; padding: 0 8px;
+    }
+    .choix button.choisi { border-color: var(--noir); background: var(--noir); color: var(--jaune); }
+    @media (prefers-color-scheme: dark) { .choix button.choisi { border-color: var(--jaune); } }
+    .ligne-cap { display: flex; gap: 8px; margin-top: 8px; }
+    .ligne-cap button {
+      flex: 1; min-height: 42px; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte);
+      color: var(--texte); font-weight: 600; font-size: 15px; font-family: inherit; cursor: pointer;
+    }
+    .gros.danger { background: var(--carte); color: var(--rouge); border: 2px solid var(--rouge); }
+    .info { background: var(--vert-clair); color: var(--vert); border-radius: 10px; padding: 10px 12px; font-weight: 600; margin: 12px 0; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -151,6 +191,23 @@
     }
     var moi = lireNom();
 
+    var CLE_CAPITAINE = 'tcb-championnat-capitaine';
+    function lireJeton() { try { return localStorage.getItem(CLE_CAPITAINE) || ''; } catch (e) { return ''; } }
+    function ecrireJeton(j) {
+      try { j ? localStorage.setItem(CLE_CAPITAINE, j) : localStorage.removeItem(CLE_CAPITAINE); } catch (e) {}
+    }
+    // Lien de connexion reçu par mail : ?capitaine=<jeton>
+    var jetonDuLien = '<?= jetonCapitaine ?>';
+    if (jetonDuLien) ecrireJeton(jetonDuLien);
+    var jeton = jetonDuLien || lireJeton();
+    var capitaine = null;      // adresse du capitaine connecté
+    var donneesCap = null;     // rencontres vues par les capitaines (avec nb de réponses)
+    var edition = null;        // rencontre en cours de modification (null = création)
+    var brouillon = null;      // valeurs du formulaire de rencontre
+    var messageCap = '';
+    // 'matchs' | 'cap' (accueil) | 'cap-form' | 'cap-gerer' | 'cap-dispos'
+    var vue = jetonDuLien ? 'cap' : 'matchs';
+
     // --- Outils ---
     function esc(t) {
       return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) {
@@ -163,6 +220,7 @@
       var texte = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       return texte.charAt(0).toUpperCase() + texte.slice(1);
     }
+    function dateDansPhrase(iso) { return dateLongue(iso).toLowerCase(); }
     function compte(n, singulier, pluriel) {
       return n + ' ' + (n > 1 ? pluriel : singulier);
     }
@@ -208,6 +266,13 @@
       if (!donnees) return;
       var champ = document.getElementById('champ-nom');
       if (champ && !inscription.choixGroupe) inscription.nom = champ.value;
+      if (vue === 'cap-form') lireBrouillon();
+
+      if (vue !== 'matchs') {
+        zoneMoi.hidden = true;
+        contenu.innerHTML = ecranCapitaine();
+        return;
+      }
 
       if (!moi || !joueur(moi)) {
         moi = null;
@@ -242,7 +307,7 @@
           '<form id="form-nom"><label for="champ-nom">Ton prénom et l\'initiale de ton nom</label>' +
           '<input id="champ-nom" placeholder="ex. Julien C." autocomplete="name" autocapitalize="words" maxlength="40" value="' +
             esc(inscription.nom) + '">' +
-          '<button class="gros" type="submit">Continuer</button></form></div>';
+          '<button class="gros" type="submit">Continuer</button></form></div>' + piedCapitaines();
       }
       html += '<p>Bienvenue <b>' + esc(inscription.nom) + '</b> ! Tu joues dans quelle équipe ?</p>';
       donnees.groupes.forEach(function (g) {
@@ -252,9 +317,13 @@
       return html + '<button class="lien" id="corriger-nom">← Corriger mon nom</button></div>';
     }
 
+    function piedCapitaines() {
+      return '<p class="pied"><button data-vue="cap">⚙️ Espace capitaines</button></p>';
+    }
+
     /** Tous les matchs du club, par date ; chacun peut répondre sur chaque match. */
     function ecranListe() {
-      var pied = '<p class="pied"><a href="' + esc(donnees.lienCapitaines) + '" target="_blank" rel="noopener">⚙️ Espace capitaines</a></p>';
+      var pied = piedCapitaines();
       if (!donnees.rencontres.length) return '<div class="vide">Aucune rencontre à venir.</div>' + pied;
       return parJour(donnees.rencontres).map(function (j) {
         var domicile = j.rencontres.filter(function (r) { return r.lieu === 'Domicile'; }).length;
@@ -330,10 +399,191 @@
         .repondre([id], moi, nouvelle);
     }
 
+    // ======================= Espace capitaines =======================
+
+    function ecranCapitaine() {
+      if (!capitaine) return jeton ? '<div class="vide">Connexion…</div>' : ecranConnexionCap();
+      if (vue === 'cap-form') return ecranFormRencontre();
+      if (vue === 'cap-gerer') return ecranGerer();
+      if (vue === 'cap-dispos') return ecranDispos();
+      var nbAttente = donnees.rencontres.filter(function (r) { return r.statut !== 'Validée'; }).length;
+      return '<div class="cap"><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
+        (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
+        '<div class="tuiles">' +
+          tuile('cap-form', '➕', 'Créer une rencontre', 'Date, adversaire, lieu…', true) +
+          tuile('cap-gerer', '📅', 'Gérer les rencontres', 'Modifier, valider, supprimer' + (nbAttente ? ' · ' + nbAttente + ' en attente' : '')) +
+          tuile('cap-dispos', '👥', 'Dispos des joueurs', 'Qui vient à chaque match') +
+          tuile('matchs', '🎾', 'Page des joueurs', 'Revenir aux matchs') +
+        '</div>' +
+        '<p class="pied"><button id="deconnexion-cap">Se déconnecter de l\'espace capitaines</button></p></div>';
+    }
+
+    function tuile(cible, icone, titre, detail, noire) {
+      return '<button class="tuile' + (noire ? ' noire' : '') + '" data-vue="' + cible + '">' +
+        '<span class="icone">' + icone + '</span><span><b>' + esc(titre) + '</b><small>' + esc(detail) + '</small></span></button>';
+    }
+
+    function enTeteCap(titre) {
+      return '<div class="cap"><button class="lien" data-vue="cap">← Espace capitaines</button><h2>' + esc(titre) + '</h2>' +
+        (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '');
+    }
+
+    function ecranConnexionCap() {
+      return '<div class="cap"><button class="lien" data-vue="matchs">← Retour aux matchs</button>' +
+        '<h2>⚙️ Espace capitaines</h2>' +
+        '<p class="sous">Réservé aux capitaines. Tape ton adresse : tu recevras un lien de connexion par mail. ' +
+        'Ton téléphone s\'en souviendra ensuite.</p>' +
+        (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
+        '<form id="form-cap-connexion"><div class="champ"><label for="cap-email">Ton adresse e-mail</label>' +
+        '<input id="cap-email" type="email" autocomplete="email" placeholder="prenom.nom@gmail.com" required></div>' +
+        '<button class="gros" type="submit">Recevoir mon lien de connexion</button></form></div>';
+    }
+
+    function ecranFormRencontre() {
+      var b = brouillon;
+      var html = enTeteCap(edition ? 'Modifier la rencontre' : 'Créer une rencontre') +
+        '<form id="form-rencontre">' +
+        '<div class="deux"><div class="champ"><label for="r-date">Date</label><input id="r-date" type="date" required value="' + esc(b.date) + '"></div>' +
+        '<div class="champ"><label for="r-heure">Heure</label><input id="r-heure" placeholder="9h, 14h30" value="' + esc(b.heure) + '"></div></div>' +
+        '<div class="champ"><label>Équipe</label><div class="choix">' + boutonsChoix('equipe', donnees.equipes, b.equipe) + '</div></div>' +
+        '<div class="champ"><label for="r-adversaire">Adversaire</label><input id="r-adversaire" placeholder="ex. TC Montaigu 4" value="' + esc(b.adversaire) + '"></div>' +
+        '<div class="champ"><label>Lieu</label><div class="choix">' +
+          boutonsChoix('lieu', ['Domicile', 'Extérieur', ''], b.lieu, { '': 'À venir', 'Domicile': '🏠 Domicile', 'Extérieur': '🚗 Extérieur' }) + '</div></div>' +
+        '<div class="champ"><label>Statut</label><div class="choix">' +
+          boutonsChoix('statut', ['En attente', 'Validée'], b.statut, { 'En attente': '⏳ En attente', 'Validée': '✅ Validée' }) + '</div></div>' +
+        '<div class="champ"><label for="r-infos">Infos pour les joueurs</label><textarea id="r-infos" placeholder="ex. RDV 8h30 au club">' + esc(b.infos) + '</textarea></div>' +
+        '<button class="gros" type="submit">' + (edition ? 'Enregistrer les modifications' : 'Créer la rencontre') + '</button>';
+      if (edition) html += '<button class="gros danger" type="button" id="supprimer-rencontre">Supprimer cette rencontre</button>';
+      return html + '</form></div>';
+    }
+
+    function boutonsChoix(champ, valeurs, actuelle, libelles) {
+      return valeurs.map(function (v) {
+        return '<button type="button" data-champ="' + champ + '" data-valeur="' + esc(v) + '"' + (v === actuelle ? ' class="choisi"' : '') + '>' +
+          esc(libelles && libelles[v] != null ? libelles[v] : v) + '</button>';
+      }).join('');
+    }
+
+    function lireBrouillon() {
+      if (!document.getElementById('form-rencontre')) return;
+      brouillon.date = document.getElementById('r-date').value;
+      brouillon.heure = document.getElementById('r-heure').value;
+      brouillon.adversaire = document.getElementById('r-adversaire').value;
+      brouillon.infos = document.getElementById('r-infos').value;
+    }
+
+    function ouvrirForm(r) {
+      edition = r || null;
+      brouillon = r
+        ? { id: r.id, date: r.date, heure: r.heure, equipe: r.equipe, adversaire: r.adversaire, lieu: r.lieu, statut: r.statut, infos: r.infos }
+        : { id: '', date: '', heure: '', equipe: donnees.equipes[0], adversaire: '', lieu: '', statut: 'En attente', infos: '' };
+      allerA('cap-form');
+    }
+
+    function ecranGerer() {
+      var html = enTeteCap('Gérer les rencontres');
+      if (!donnees.rencontres.length) return html + '<div class="vide">Aucune rencontre à venir.</div></div>';
+      html += parJour(donnees.rencontres).map(function (j) {
+        return '<div class="carte"><p class="jour">' + esc(dateLongue(j.date)) + '</p>' + j.rencontres.map(function (r) {
+          var nb = Object.keys(donnees.reponses[r.id] || {}).length;
+          return '<div class="rencontre"><div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
+            '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + ' · ' + nb + ' réponse' + (nb > 1 ? 's' : '') + '</div>' +
+            '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+            '<div class="ligne-cap"><button data-modifier="' + esc(r.id) + '">✏️ Modifier</button>' +
+            '<button data-basculer="' + esc(r.id) + '">' + (r.statut === 'Validée' ? '⏳ Remettre en attente' : '✅ Valider') + '</button></div></div>';
+        }).join('') + '</div>';
+      }).join('');
+      return html + '</div>';
+    }
+
+    function ecranDispos() {
+      var html = enTeteCap('Dispos des joueurs');
+      if (!donnees.rencontres.length) return html + '<div class="vide">Aucune rencontre à venir.</div></div>';
+      html += parJour(donnees.rencontres).map(function (j) {
+        return '<div class="carte"><p class="jour">' + esc(dateLongue(j.date)) + '</p>' + j.rencontres.map(function (r) {
+          var b = bilan(r);
+          return '<div class="rencontre"><div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
+            '<div class="liste">' + ligneNoms('✅ ' + b.presents.length + ' dispo' + (b.presents.length > 1 ? 's' : ''), b.presents) +
+            ligneNoms('❌ ' + b.absents.length + ' pas dispo' + (b.absents.length > 1 ? 's' : ''), b.absents) +
+            ligneNoms('… ' + b.sansReponse.length + ' sans réponse', b.sansReponse) + '</div></div>';
+        }).join('') + '</div>';
+      }).join('');
+      return html + '</div>';
+    }
+
+    function allerA(nouvelleVue) {
+      if (nouvelleVue !== vue) messageCap = '';
+      vue = nouvelleVue;
+      rendre();
+      window.scrollTo(0, 0);
+    }
+
+    function appelCap(fonction, args, succes) {
+      var boutons = document.querySelectorAll('#contenu button');
+      Array.prototype.forEach.call(boutons, function (b) { b.disabled = true; });
+      var run = google.script.run
+        .withSuccessHandler(function (r) {
+          donneesCap = r;
+          succes();
+          charger(); // met à jour la page des joueurs avec la Sheet
+        })
+        .withFailureHandler(function (err) {
+          Array.prototype.forEach.call(boutons, function (b) { b.disabled = false; });
+          var msg = err && err.message ? err.message : 'problème de connexion';
+          if (/expirée/.test(msg)) { deconnexionCap(); }
+          afficherErreur(msg);
+        });
+      run[fonction].apply(run, [jeton].concat(args));
+    }
+
+    function verifierCapitaine() {
+      if (!jeton) return;
+      google.script.run
+        .withSuccessHandler(function (info) { capitaine = info.email; rendre(); })
+        .withFailureHandler(function () {
+          deconnexionCap();
+          if (vue !== 'matchs') { messageCap = 'Ce lien n\'est plus valable : redemande un lien de connexion.'; rendre(); }
+        })
+        .infoCapitaine(jeton);
+    }
+
+    function deconnexionCap() {
+      capitaine = null;
+      jeton = '';
+      ecrireJeton('');
+    }
+
     document.addEventListener('click', function (e) {
       var cible = e.target.closest('button');
       if (!cible) return;
-      if (cible.hasAttribute('data-groupe')) {
+      if (cible.hasAttribute('data-vue')) {
+        var v = cible.getAttribute('data-vue');
+        if (v === 'cap-form') ouvrirForm(null); else allerA(v);
+      } else if (cible.hasAttribute('data-champ')) {
+        lireBrouillon();
+        brouillon[cible.getAttribute('data-champ')] = cible.getAttribute('data-valeur');
+        rendre();
+      } else if (cible.hasAttribute('data-modifier')) {
+        ouvrirForm(donnees.rencontres.filter(function (r) { return r.id === cible.getAttribute('data-modifier'); })[0]);
+      } else if (cible.hasAttribute('data-basculer')) {
+        var r = donnees.rencontres.filter(function (x) { return x.id === cible.getAttribute('data-basculer'); })[0];
+        var modif = Object.assign({}, r, { statut: r.statut === 'Validée' ? 'En attente' : 'Validée' });
+        appelCap('enregistrerRencontre', [modif], function () {
+          messageCap = modif.equipe + ' du ' + dateDansPhrase(modif.date) + (modif.statut === 'Validée' ? ' : date validée.' : ' : remise en attente.');
+        });
+      } else if (cible.id === 'supprimer-rencontre') {
+        if (!confirm('Supprimer ' + edition.equipe + ' – ' + (edition.adversaire || 'adversaire à venir') + ' du ' + dateDansPhrase(edition.date) +
+          ' ? Les réponses des joueurs à ce match seront aussi supprimées.')) return;
+        var supprimee = edition;
+        appelCap('supprimerRencontre', [supprimee.id], function () {
+          messageCap = 'Rencontre du ' + dateDansPhrase(supprimee.date) + ' supprimée.';
+          vue = 'cap-gerer';
+        });
+      } else if (cible.id === 'deconnexion-cap') {
+        google.script.run.deconnecterCapitaine(jeton);
+        deconnexionCap();
+        allerA('matchs');
+      } else if (cible.hasAttribute('data-groupe')) {
         inscrire(cible.getAttribute('data-groupe'));
       } else if (cible.id === 'corriger-nom') {
         inscription.choixGroupe = false;
@@ -349,6 +599,30 @@
     });
 
     document.addEventListener('submit', function (e) {
+      if (e.target.id === 'form-cap-connexion') {
+        e.preventDefault();
+        var email = document.getElementById('cap-email').value.trim();
+        var bouton = e.target.querySelector('button');
+        bouton.disabled = true;
+        google.script.run
+          .withSuccessHandler(function (msg) { messageCap = msg; rendre(); })
+          .withFailureHandler(function (err) { bouton.disabled = false; afficherErreur(err && err.message ? err.message : 'Envoi impossible.'); })
+          .demanderLienCapitaine(email);
+        return;
+      }
+      if (e.target.id === 'form-rencontre') {
+        e.preventDefault();
+        lireBrouillon();
+        if (!brouillon.date) { afficherErreur('Choisis une date.'); return; }
+        var r = Object.assign({}, brouillon);
+        var etaitEdition = !!edition;
+        appelCap('enregistrerRencontre', [r], function () {
+          messageCap = (etaitEdition ? 'Rencontre modifiée : ' : 'Rencontre créée : ') + r.equipe + ' – ' + (r.adversaire || 'adversaire à venir') + ', ' + dateDansPhrase(r.date) + '.';
+          edition = null;
+          vue = etaitEdition ? 'cap-gerer' : 'cap';
+        });
+        return;
+      }
       if (e.target.id !== 'form-nom') return;
       e.preventDefault();
       var saisie = nettoyerNom(document.getElementById('champ-nom').value);
@@ -383,7 +657,10 @@
 
     function charger() {
       google.script.run
-        .withSuccessHandler(function (d) { donnees = d; rendre(); })
+        .withSuccessHandler(function (d) {
+          donnees = d;
+          if (vue !== 'cap-form' || !document.getElementById('form-rencontre')) rendre();
+        })
         .withFailureHandler(function (err) {
           document.getElementById('contenu').innerHTML =
             '<div class="vide">Impossible de charger les rencontres.<br>' + esc(err && err.message) +
@@ -398,6 +675,7 @@
     });
 
     charger();
+    verifierCapitaine();
   </script>
 </body>
 </html>

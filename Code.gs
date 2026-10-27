@@ -53,9 +53,6 @@ var REPONSES = ['Présent', 'Absent'];
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🎾 ' + NOM_CLUB)
-    .addItem('⚙️ Paramètres capitaines', 'ouvrirParametres')
-    .addItem('👥 Donner l\'accès aux capitaines', 'partagerAvecCapitaines')
-    .addSeparator()
     .addItem('Installer les onglets', 'installerOnglets')
     .addItem('Ouvrir la page des joueurs', 'afficherLienPage')
     .addSeparator()
@@ -222,46 +219,81 @@ function nouvelId_() {
 }
 
 // ---------------------------------------------------------------------------
-// Paramètres capitaines (panneau dans la Sheet)
+// Espace capitaines (dans la page web)
 //
-// Seules les personnes qui peuvent modifier la Sheet (toi + les capitaines
-// avec qui elle est partagée) y ont accès. Ces fonctions sont aussi
-// appelables depuis la page publique : verifierCapitaine_() les protège.
+// Connexion par lien envoyé par mail : le capitaine tape son adresse, reçoit
+// un lien contenant un jeton secret, et la page garde ce jeton. Les fonctions
+// de gestion exigent ce jeton (ou, dans la Sheet, le compte Google connecté).
 // ---------------------------------------------------------------------------
 
-function ouvrirParametres() {
-  verifierCapitaine_();
-  SpreadsheetApp.getUi().showSidebar(
-    HtmlService.createHtmlOutputFromFile('Capitaines').setTitle('⚙️ Paramètres capitaines'));
+var DUREE_JETON_JOURS = 365;
+var MAX_MAILS_PAR_JOUR = 5;
+
+function adressesCapitaines_() {
+  var proprietaire = SpreadsheetApp.getActive().getOwner();
+  return CAPITAINES.map(function (e) { return e.toLowerCase(); })
+    .concat(proprietaire ? [String(proprietaire.getEmail()).toLowerCase()] : []);
 }
 
-/** Refuse l'appel si la personne n'est ni propriétaire de la Sheet ni dans CAPITAINES. */
-function verifierCapitaine_() {
-  // Vide pour un visiteur de la page publique (le script s'exécute alors en tant que propriétaire).
-  var email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  var proprietaire = SpreadsheetApp.getActive().getOwner();
-  var autorises = CAPITAINES.map(function (e) { return e.toLowerCase(); })
-    .concat(proprietaire ? [String(proprietaire.getEmail()).toLowerCase()] : []);
-  if (!email || autorises.indexOf(email) === -1) {
-    throw new Error('Réservé aux capitaines : ouvrez la Google Sheet avec un compte capitaine.');
+/**
+ * Renvoie l'adresse du capitaine, ou lève une erreur.
+ * Avec un jeton : connexion depuis la page. Sans jeton : compte Google
+ * connecté (menus de la Sheet) ; vide pour un visiteur de la page publique.
+ */
+function verifierCapitaine_(jeton) {
+  var email = '';
+  if (jeton) {
+    var brut = PropertiesService.getScriptProperties().getProperty('jeton_' + jeton);
+    var info = brut ? JSON.parse(brut) : null;
+    if (info && info.expire > Date.now()) email = info.email;
+  } else {
+    email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  }
+  if (!email || adressesCapitaines_().indexOf(email) === -1) {
+    throw new Error(jeton ? 'Connexion capitaine expirée : redemande un lien.' : 'Réservé aux capitaines.');
   }
   return email;
 }
 
-/** Donne aux CAPITAINES le droit de modifier la Sheet (Google leur envoie un mail). */
-function partagerAvecCapitaines() {
-  verifierCapitaine_();
-  var ss = SpreadsheetApp.getActive();
-  var deja = ss.getEditors().map(function (u) { return String(u.getEmail()).toLowerCase(); });
-  var nouveaux = CAPITAINES.filter(function (e) { return deja.indexOf(e.toLowerCase()) === -1; });
-  if (nouveaux.length) ss.addEditors(nouveaux);
-  SpreadsheetApp.getUi().alert(nouveaux.length
-    ? 'Accès donné à :\n' + nouveaux.join('\n') + '\n\nIls reçoivent un mail de Google avec le lien de la Sheet.'
-    : 'Les capitaines ont déjà accès à la Sheet.');
+/**
+ * Envoie un lien de connexion si l'adresse est celle d'un capitaine.
+ * Répond toujours la même chose, pour ne pas révéler qui est capitaine.
+ */
+function demanderLienCapitaine(adresse) {
+  var email = String(adresse || '').trim().toLowerCase();
+  var reponse = 'Si cette adresse est celle d\'un capitaine, un mail avec le lien de connexion vient de partir. Pense à regarder les spams.';
+  if (adressesCapitaines_().indexOf(email) === -1) return reponse;
+
+  var props = PropertiesService.getScriptProperties();
+  var cleCompteur = 'mails_' + email + '_' + Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyyMMdd');
+  var envoyes = Number(props.getProperty(cleCompteur) || 0);
+  if (envoyes >= MAX_MAILS_PAR_JOUR) return reponse;
+  props.setProperty(cleCompteur, String(envoyes + 1));
+
+  var jeton = Utilities.getUuid();
+  props.setProperty('jeton_' + jeton, JSON.stringify({ email: email, expire: Date.now() + DUREE_JETON_JOURS * 86400000 }));
+  var lien = ScriptApp.getService().getUrl() + '?capitaine=' + jeton;
+  MailApp.sendEmail({
+    to: email,
+    subject: NOM_CLUB + ' – Connexion à l\'espace capitaines',
+    body: 'Bonjour,\n\nPour te connecter à l\'espace capitaines du portail championnat, ouvre ce lien sur ton téléphone :\n\n' +
+      lien + '\n\nLe téléphone s\'en souviendra ensuite. Ne transfère pas ce mail : le lien donne accès à la gestion des rencontres.\n',
+    name: NOM_CLUB,
+  });
+  return reponse;
 }
 
-function getDonneesCapitaines() {
-  verifierCapitaine_();
+/** Adresse du capitaine connecté avec ce jeton (erreur si le jeton n'est plus valable). */
+function infoCapitaine(jeton) {
+  return { email: verifierCapitaine_(jeton) };
+}
+
+function deconnecterCapitaine(jeton) {
+  if (/^[0-9a-f-]{36}$/.test(String(jeton))) PropertiesService.getScriptProperties().deleteProperty('jeton_' + jeton);
+}
+
+function getDonneesCapitaines(jeton) {
+  verifierCapitaine_(jeton);
   var reponses = lireReponses_();
   return {
     equipes: EQUIPES,
@@ -275,8 +307,8 @@ function getDonneesCapitaines() {
 }
 
 /** Ajoute (sans id) ou modifie (avec id) une rencontre. */
-function enregistrerRencontre(r) {
-  verifierCapitaine_();
+function enregistrerRencontre(jeton, r) {
+  verifierCapitaine_(jeton);
   var m = String(r.date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) throw new Error('Date invalide.');
   if (EQUIPES.indexOf(r.equipe) === -1) throw new Error('Équipe inconnue.');
@@ -309,12 +341,12 @@ function enregistrerRencontre(r) {
   } finally {
     verrou.releaseLock();
   }
-  return getDonneesCapitaines();
+  return getDonneesCapitaines(jeton);
 }
 
 /** Supprime une rencontre et les réponses des joueurs à cette rencontre. */
-function supprimerRencontre(id) {
-  verifierCapitaine_();
+function supprimerRencontre(jeton, id) {
+  verifierCapitaine_(jeton);
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
   try {
@@ -333,7 +365,7 @@ function supprimerRencontre(id) {
   } finally {
     verrou.releaseLock();
   }
-  return getDonneesCapitaines();
+  return getDonneesCapitaines(jeton);
 }
 
 function ligneRencontre_(id) {
@@ -346,9 +378,12 @@ function ligneRencontre_(id) {
 // Page web
 // ---------------------------------------------------------------------------
 
-function doGet() {
+function doGet(e) {
   var page = HtmlService.createTemplateFromFile('Index');
   page.nomClub = NOM_CLUB;
+  // Lien de connexion capitaine reçu par mail (format vérifié : il est réécrit dans la page).
+  var jeton = String((e && e.parameter && e.parameter.capitaine) || '');
+  page.jetonCapitaine = /^[0-9a-f-]{36}$/.test(jeton) ? jeton : '';
   return page.evaluate()
     .setTitle(NOM_CLUB + ' – Championnat')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -382,7 +417,6 @@ function getDonnees() {
     joueurs: joueurs,
     rencontres: rencontres,
     reponses: lireReponses_(),
-    lienCapitaines: ss.getUrl(),
   };
 }
 
