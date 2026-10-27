@@ -344,7 +344,7 @@ function nouvelId_() {
 // ---------------------------------------------------------------------------
 
 var DUREE_JETON_JOURS = 365;
-var MAX_MAILS_PAR_JOUR = 5;
+var MAX_MAILS_PAR_JOUR = 10;
 
 function adressesCapitaines_() {
   var proprietaire = SpreadsheetApp.getActive().getOwner();
@@ -382,10 +382,12 @@ function demanderLienCapitaine(adresse) {
   if (adressesCapitaines_().indexOf(email) === -1) return reponse;
 
   var props = PropertiesService.getScriptProperties();
-  var cleCompteur = 'mails_' + email + '_' + Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyyMMdd');
+  var cleCompteur = 'envois_' + email + '_' + Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyyMMdd');
   var envoyes = Number(props.getProperty(cleCompteur) || 0);
-  if (envoyes >= MAX_MAILS_PAR_JOUR) return reponse;
-  props.setProperty(cleCompteur, String(envoyes + 1));
+  if (envoyes >= MAX_MAILS_PAR_JOUR) {
+    console.warn('Limite de mails de connexion atteinte aujourd\'hui pour ' + email);
+    return reponse;
+  }
 
   var jeton = Utilities.getUuid();
   props.setProperty('jeton_' + jeton, JSON.stringify({ email: email, expire: Date.now() + DUREE_JETON_JOURS * 86400000 }));
@@ -397,6 +399,8 @@ function demanderLienCapitaine(adresse) {
       lien + '\n\nLe téléphone s\'en souviendra ensuite. Ne transfère pas ce mail : le lien donne accès à la gestion des rencontres.\n',
     name: NOM_CLUB,
   });
+  // Compté seulement une fois le mail réellement parti.
+  props.setProperty(cleCompteur, String(envoyes + 1));
   return reponse;
 }
 

@@ -40,7 +40,7 @@ Espace capitaines **dans la page des joueurs** (lien « ⚙️ Espace capitaines
 
 Connexion :
 1. « ⚙️ Espace capitaines » → taper son adresse e-mail → « Recevoir mon lien de connexion ».
-2. Si l'adresse est dans la liste, un mail part du compte du club avec un lien personnel (`…/exec?capitaine=<jeton>`). La page répond la même chose pour toute adresse, pour ne pas révéler qui est capitaine. 5 mails maximum par adresse et par jour.
+2. Si l'adresse est dans la liste, un mail part du compte du club avec un lien personnel (`…/exec?capitaine=<jeton>`). La page répond la même chose pour toute adresse, pour ne pas révéler qui est capitaine. 10 mails maximum par adresse et par jour (seuls les envois réussis comptent).
 3. Ouvrir le lien sur son téléphone : la page s'ouvre sur les matchs (comme pour les joueurs) et le téléphone garde la connexion capitaine (1 an, ou jusqu'à « Se déconnecter »). L'espace capitaines s'ouvre ensuite avec le bouton **⚙️** en haut à droite (ou le lien en bas de page).
 
 Vignettes :
