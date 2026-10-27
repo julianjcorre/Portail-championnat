@@ -4,6 +4,14 @@ Page web gratuite, hébergée par Google, qui affiche aux joueurs les dates de c
 
 Techniquement : une Google Sheet + un script Apps Script publié en « Application Web ».
 
+## Adresse à partager aux joueurs
+
+👉 **https://tcbazogeais.github.io** (GitHub Pages, dépôt public `TCBazogeais/tcbazogeais.github.io`).
+
+La page est hébergée hors de Google et appelle Apps Script en coulisses (`doPost`, sans compte Google) : plus d'erreur « Impossible d'ouvrir le fichier » quand plusieurs comptes Google sont connectés, plus de bandeau gris. L'ancienne adresse `…/exec` fonctionne toujours mais reste sujette à ce bug.
+
+Après une modification de `Index.html`, copier le fichier en `index.html` dans le dépôt `tcbazogeais.github.io` et le pousser (GitHub Pages se met à jour en 1 à 2 minutes). `Code.gs` reste mis en ligne automatiquement sur Apps Script.
+
 ## Fichiers
 
 | Fichier | Rôle |
