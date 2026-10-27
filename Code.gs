@@ -41,14 +41,17 @@ var URL_PAGE = 'https://tcbazogeais.github.io/';
 var ONGLET_RENCONTRES = 'Rencontres';
 var ONGLET_JOUEURS = 'Joueurs';
 var ONGLET_REPONSES = 'Réponses';
+var ONGLET_SELECTION = 'Sélection';
 
 var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos'];
 var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le'];
 var ENTETES_REPONSES = ['ID rencontre', 'Nom', 'Réponse', 'Répondu le'];
+var ENTETES_SELECTION = ['ID rencontre', 'Nom', 'Rôle', 'Modifié le'];
 
 var LIEUX = ['Domicile', 'Extérieur'];
 var STATUTS = ['Validée', 'En attente'];
 var REPONSES = ['Présent', 'Absent'];
+var ROLES = ['Titulaire', 'Remplaçant'];
 
 // ---------------------------------------------------------------------------
 // Menu dans la Sheet
@@ -395,19 +398,76 @@ function demanderLienCapitaine(adresse) {
   props.setProperty('jeton_' + jeton, JSON.stringify({ email: email, expire: Date.now() + DUREE_JETON_JOURS * 86400000 }));
   var lien = (URL_PAGE || ScriptApp.getService().getUrl()) + '?capitaine=' + jeton;
   var heure = Utilities.formatDate(maintenant, 'Europe/Paris', 'dd/MM HH:mm');
+  // Code à taper dans l'appli installée (valable 30 minutes).
+  var code = String(Math.floor(100000 + Math.random() * 900000));
+  props.setProperty('code_' + email, JSON.stringify({ code: code, jeton: jeton, expire: Date.now() + 30 * 60000, essais: 0 }));
   MailApp.sendEmail({
     to: email,
     // Heure dans l'objet : Gmail ne regroupe pas le mail avec les demandes précédentes.
-    subject: NOM_CLUB + ' – Lien de connexion capitaine (' + heure + ')',
-    body: 'Bonjour,\n\nPour te connecter à l\'espace capitaines du portail championnat, ouvre ce lien sur ton téléphone :\n\n' +
-      lien + '\n\nLe téléphone s\'en souviendra ensuite. Ne transfère pas ce mail : le lien donne accès à la gestion des rencontres.\n',
+    subject: NOM_CLUB + ' – Code de connexion capitaine (' + heure + ')',
+    body: 'Bonjour,\n\nPour te connecter à l\'espace capitaines du portail championnat :\n\n' +
+      '• dans l\'appli installée sur ton téléphone, tape ce code : ' + code + ' (valable 30 minutes)\n\n' +
+      '• ou ouvre ce lien dans ton navigateur :\n' + lien + '\n\n' +
+      'Le téléphone s\'en souviendra ensuite. Ne transfère pas ce mail : il donne accès à la gestion des rencontres.\n',
     name: NOM_CLUB,
   });
   // Compté seulement une fois le mail réellement parti.
   props.setProperty(cleCompteur, String(envoyes + 1));
   console.log('Lien de connexion envoyé à ' + email);
-  return 'Mail envoyé à ' + email + ' (objet « ' + NOM_CLUB + ' – Lien de connexion capitaine (' + heure + ') »). ' +
-    'Il arrive en 1 à 2 minutes ; regarde aussi Spam et Promotions.';
+  return 'Mail envoyé à ' + email + ' (objet « ' + NOM_CLUB + ' – Code de connexion capitaine (' + heure + ') »). ' +
+    'Il arrive en 1 à 2 minutes ; regarde aussi Spam et Promotions. Tape le code du mail ci-dessous, ou ouvre son lien.';
+}
+
+/**
+ * Connexion par code (appli installée sur l'écran d'accueil : les liens des mails
+ * s'ouvrent dans le navigateur, pas dans l'appli). Renvoie { jeton }.
+ */
+function validerCodeCapitaine(adresse, code) {
+  var email = String(adresse || '').trim().toLowerCase();
+  var props = PropertiesService.getScriptProperties();
+  var brut = props.getProperty('code_' + email);
+  var info = brut ? JSON.parse(brut) : null;
+  if (!info || info.expire < Date.now()) throw new Error('Code expiré : redemande un mail de connexion.');
+  if (info.essais >= 5) throw new Error('Trop d\'essais : redemande un mail de connexion.');
+  if (String(code || '').replace(/\D/g, '') !== info.code) {
+    info.essais++;
+    props.setProperty('code_' + email, JSON.stringify(info));
+    throw new Error('Code incorrect. Vérifie le dernier mail reçu.');
+  }
+  props.deleteProperty('code_' + email);
+  verifierCapitaine_(info.jeton);
+  return { jeton: info.jeton };
+}
+
+/** Retenir un joueur pour une rencontre : role 'Titulaire', 'Remplaçant' ou '' pour le retirer. */
+function definirSelection(jeton, idRencontre, nom, role) {
+  verifierCapitaine_(jeton);
+  if (role && ROLES.indexOf(role) === -1) throw new Error('Rôle inconnu.');
+  if (!ligneRencontre_(idRencontre)) throw new Error('Rencontre introuvable. Rechargez la page.');
+  var noms = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
+  if (noms.indexOf(nom) === -1) throw new Error('Joueur inconnu : ' + nom);
+
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var sheet = ongletSelection_();
+    var lignes = lireLignes_(ONGLET_SELECTION);
+    var index = -1;
+    for (var i = 0; i < lignes.length; i++) {
+      if (String(lignes[i][0]) === idRencontre && String(lignes[i][1]) === nom) { index = i; break; }
+    }
+    if (!role) {
+      if (index !== -1) sheet.deleteRow(index + 2);
+    } else if (index !== -1) {
+      sheet.getRange(index + 2, 3, 1, 2).setValues([[role, new Date()]]);
+    } else {
+      sheet.appendRow([idRencontre, nom, role, new Date()]);
+    }
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return lireSelection_();
 }
 
 /** Adresse du capitaine connecté avec ce jeton (erreur si le jeton n'est plus valable). */
@@ -482,6 +542,7 @@ function supprimerRencontre(jeton, id) {
     if (!ligne) throw new Error('Rencontre introuvable. Rechargez le panneau.');
     ss.getSheetByName(ONGLET_RENCONTRES).deleteRow(ligne);
 
+    supprimerLignesSelection_(function (l) { return String(l[0]) === id; });
     var reponses = ss.getSheetByName(ONGLET_REPONSES);
     lireLignes_(ONGLET_REPONSES)
       .map(function (l, i) { return String(l[0]) === id ? i + 2 : 0; })
@@ -510,6 +571,12 @@ function renommerJoueur(jeton, ancien, nouveauSaisi) {
     var doublon = noms.filter(function (n, j) { return j !== i && cleNom_(n) === cleNom_(nouveau); })[0];
     if (doublon) throw new Error('« ' + doublon + ' » existe déjà : supprime plutôt le doublon.');
     ss.getSheetByName(ONGLET_JOUEURS).getRange(i + 2, 1).setValue(nouveau);
+    if (ss.getSheetByName(ONGLET_SELECTION)) {
+      var selection = ss.getSheetByName(ONGLET_SELECTION);
+      lireLignes_(ONGLET_SELECTION).forEach(function (l, j) {
+        if (String(l[1]).trim() === ancien) selection.getRange(j + 2, 2).setValue(nouveau);
+      });
+    }
 
     var reponses = ss.getSheetByName(ONGLET_REPONSES);
     lireLignes_(ONGLET_REPONSES).forEach(function (l, j) {
@@ -532,6 +599,7 @@ function supprimerJoueur(jeton, nom) {
     var i = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); }).indexOf(nom);
     if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
     ss.getSheetByName(ONGLET_JOUEURS).deleteRow(i + 2);
+    supprimerLignesSelection_(function (l) { return String(l[1]).trim() === nom; });
 
     var reponses = ss.getSheetByName(ONGLET_REPONSES);
     lireLignes_(ONGLET_REPONSES)
@@ -543,6 +611,15 @@ function supprimerJoueur(jeton, nom) {
     verrou.releaseLock();
   }
   return { nom: nom };
+}
+
+function supprimerLignesSelection_(condition) {
+  var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_SELECTION);
+  if (!sheet) return;
+  lireLignes_(ONGLET_SELECTION)
+    .map(function (l, i) { return condition(l) ? i + 2 : 0; })
+    .filter(Boolean).reverse()
+    .forEach(function (n) { sheet.deleteRow(n); });
 }
 
 function ligneRencontre_(id) {
@@ -584,6 +661,8 @@ function doPost(e) {
     supprimerRencontre: supprimerRencontre,
     renommerJoueur: renommerJoueur,
     supprimerJoueur: supprimerJoueur,
+    validerCodeCapitaine: validerCodeCapitaine,
+    definirSelection: definirSelection,
   };
   var sortie;
   try {
@@ -628,6 +707,7 @@ function getDonnees() {
     joueurs: joueurs,
     rencontres: rencontres,
     reponses: lireReponses_(),
+    selection: lireSelection_(),
   };
 }
 
@@ -802,6 +882,31 @@ function completerIds_() {
 }
 
 /** { idRencontre: { nom: 'Présent' | 'Absent' } } */
+/** Onglet Sélection, créé au premier besoin. */
+function ongletSelection_() {
+  var ss = SpreadsheetApp.getActive();
+  var sheet = ss.getSheetByName(ONGLET_SELECTION);
+  if (!sheet) {
+    sheet = ss.insertSheet(ONGLET_SELECTION);
+    preparerEntetes_(sheet, ENTETES_SELECTION);
+    sheet.getRange('D:D').setNumberFormat('dd/mm/yyyy hh:mm');
+  }
+  return sheet;
+}
+
+/** { idRencontre: { nom: 'Titulaire' | 'Remplaçant' } } */
+function lireSelection_() {
+  var selection = {};
+  if (!SpreadsheetApp.getActive().getSheetByName(ONGLET_SELECTION)) return selection;
+  lireLignes_(ONGLET_SELECTION).forEach(function (l) {
+    var id = String(l[0]);
+    if (!id) return;
+    selection[id] = selection[id] || {};
+    selection[id][String(l[1])] = String(l[2]);
+  });
+  return selection;
+}
+
 function lireReponses_() {
   var reponses = {};
   lireLignes_(ONGLET_REPONSES).forEach(function (l) {
