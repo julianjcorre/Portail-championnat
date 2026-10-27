@@ -474,6 +474,17 @@
         (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
     }
     function surIphone() { return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+    /** Nom du navigateur Android utilisé, pour les instructions. */
+    function navigateur() {
+      var ua = navigator.userAgent;
+      if (navigator.brave) return 'Brave';
+      if (/SamsungBrowser/i.test(ua)) return 'Samsung Internet';
+      if (/MiuiBrowser|XiaoMi/i.test(ua)) return 'Mi Navigateur';
+      if (/Firefox/i.test(ua)) return 'Firefox';
+      if (/EdgA/i.test(ua)) return 'Edge';
+      if (/OPR|Opera/i.test(ua)) return 'Opera';
+      return 'Chrome';
+    }
 
     function installer() { allerA('installer'); }
 
@@ -484,7 +495,7 @@
     }
 
     function ecranInstaller() {
-      var iphone = surIphone();
+      var iphone = surIphone(), nav = navigateur();
       return '<div class="cap"><button class="lien" data-vue="matchs">← Retour aux matchs</button>' +
         '<h2>📲 Installer l\'appli</h2><p class="sous">L\'icône du club apparaîtra sur ton téléphone, comme une vraie appli.</p>' +
         (invitationInstall ? '<button class="gros" id="installer-direct" style="margin:0 0 16px">📲 Installer maintenant</button>' +
@@ -493,14 +504,14 @@
           ? '<li>Ouvre cette page dans <b>Safari</b> (pas depuis WhatsApp ou Gmail : touche « Ouvrir dans Safari » si besoin).</li>' +
             '<li>Touche le bouton <b>Partager</b> ⬆️ en bas de l\'écran.</li>' +
             '<li>Fais défiler et choisis <b>« Sur l\'écran d\'accueil »</b>, puis <b>Ajouter</b>.</li>'
-          : '<li>Ouvre cette page dans <b>Chrome</b> (depuis WhatsApp : menu ⋮ → « Ouvrir dans Chrome »).</li>' +
+          : '<li>Ouvre cette page dans <b>' + nav + '</b> (depuis WhatsApp : menu ⋮ → « Ouvrir dans le navigateur »).</li>' +
             '<li>Touche le menu <b>⋮</b> en haut à droite.</li>' +
             '<li>Choisis <b>« Ajouter à l\'écran d\'accueil »</b> ou <b>« Installer l\'appli »</b>, puis <b>Installer</b>.</li>') +
           '' +
         '<li>Ouvre l\'appli depuis l\'icône : tape ton prénom une fois, c\'est tout.</li></ol></div>' +
         (iphone ? '' : '<div class="carte"><b>📱 Xiaomi, Redmi, Poco, Huawei, Oppo : l\'icône n\'apparaît pas ?</b>' +
           '<ol class="etapes" style="margin-top:8px">' +
-          '<li>Appui long sur l\'icône <b>Chrome</b> → <b>ⓘ Infos sur l\'application</b>.</li>' +
+          '<li>Appui long sur l\'icône <b>' + nav + '</b> → <b>ⓘ Infos sur l\'application</b>.</li>' +
           '<li><b>Autres autorisations</b> → <b>Raccourcis sur l\'écran d\'accueil</b> → <b>Accepter</b>.</li>' +
           '<li>Reviens ici et recommence l\'installation (menu ⋮ → Ajouter à l\'écran d\'accueil).</li></ol></div>') +
         '<p class="sous">Capitaine ? Dans l\'appli, ⚙️ Espace capitaines → ton adresse → tape le <b>code reçu par mail</b>.</p></div>';
