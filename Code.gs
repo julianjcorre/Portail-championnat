@@ -481,6 +481,56 @@ function supprimerRencontre(jeton, id) {
   return getDonneesCapitaines(jeton);
 }
 
+/** Renomme un joueur dans l'onglet Joueurs et dans ses réponses. */
+function renommerJoueur(jeton, ancien, nouveauSaisi) {
+  verifierCapitaine_(jeton);
+  var nouveau = nettoyerNom_(nouveauSaisi);
+  if (nouveau.length < 2 || nouveau.length > 40 || !/^[\p{L} .'-]+$/u.test(nouveau)) throw new Error('Nom invalide.');
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var noms = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
+    var i = noms.indexOf(ancien);
+    if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
+    var doublon = noms.filter(function (n, j) { return j !== i && cleNom_(n) === cleNom_(nouveau); })[0];
+    if (doublon) throw new Error('« ' + doublon + ' » existe déjà : supprime plutôt le doublon.');
+    ss.getSheetByName(ONGLET_JOUEURS).getRange(i + 2, 1).setValue(nouveau);
+
+    var reponses = ss.getSheetByName(ONGLET_REPONSES);
+    lireLignes_(ONGLET_REPONSES).forEach(function (l, j) {
+      if (String(l[1]).trim() === ancien) reponses.getRange(j + 2, 2).setValue(nouveau);
+    });
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return { nom: nouveau };
+}
+
+/** Supprime un joueur et ses réponses. */
+function supprimerJoueur(jeton, nom) {
+  verifierCapitaine_(jeton);
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var ss = SpreadsheetApp.getActive();
+    var i = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); }).indexOf(nom);
+    if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
+    ss.getSheetByName(ONGLET_JOUEURS).deleteRow(i + 2);
+
+    var reponses = ss.getSheetByName(ONGLET_REPONSES);
+    lireLignes_(ONGLET_REPONSES)
+      .map(function (l, j) { return String(l[1]).trim() === nom ? j + 2 : 0; })
+      .filter(Boolean).reverse()
+      .forEach(function (n) { reponses.deleteRow(n); });
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return { nom: nom };
+}
+
 function ligneRencontre_(id) {
   var ids = lireLignes_(ONGLET_RENCONTRES).map(function (l) { return String(l[0]); });
   var i = ids.indexOf(String(id));

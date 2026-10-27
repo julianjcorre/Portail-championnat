@@ -38,7 +38,9 @@ Connexion :
 Vignettes :
 - **➕ Créer une rencontre** : date, heure, équipe, adversaire, lieu, statut, infos.
 - **📅 Gérer les rencontres** : modifier, valider / remettre en attente, supprimer (supprime aussi les réponses à ce match).
-- **👥 Dispos des joueurs** : pour chaque match, qui est dispo, pas dispo, sans réponse.
+- **📊 Tableau des dispos** : vue globale, une ligne par joueur, une colonne par match (✅ / ❌ / – pas répondu), total des dispos par match et nombre de réponses par joueur. Le tableau défile horizontalement, la colonne des noms reste fixe.
+- **👥 Dispos par match** : pour chaque match, qui est dispo, pas dispo, sans réponse.
+- **👤 Joueurs** : inscrits triés par nombre de réponses manquantes (ceux qui n'ont jamais répondu en tête) ; renommer (refusé si le nom existe déjà) ou supprimer un joueur (ses réponses avec).
 - **🎾 Page des joueurs**.
 
 Sécurité : les fonctions de gestion exigent un jeton valable, lié à une adresse encore présente dans `CAPITAINES` (retirer une adresse coupe son accès). Les jetons sont stockés dans les propriétés du script. Ne pas transférer le mail de connexion.

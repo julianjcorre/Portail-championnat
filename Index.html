@@ -163,6 +163,40 @@
       color: var(--texte); font-weight: 600; font-size: 15px; font-family: inherit; cursor: pointer;
     }
     .gros.danger { background: var(--carte); color: var(--rouge); border: 2px solid var(--rouge); }
+    /* Tableau des dispos */
+    .defile { overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--carte); border: 1px solid var(--ligne); border-radius: 14px; }
+    .grille { border-collapse: separate; border-spacing: 0; font-size: 14px; min-width: 100%; }
+    .grille th, .grille td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--ligne); white-space: nowrap; }
+    .grille thead th { font-size: 12px; color: var(--doux); font-weight: 600; vertical-align: bottom; line-height: 1.25; }
+    .grille thead th b { display: block; color: var(--texte); font-size: 13px; }
+    .grille th.nom, .grille td.nom {
+      position: sticky; left: 0; z-index: 1; text-align: left; background: var(--carte); font-weight: 600;
+      border-right: 1px solid var(--ligne); max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .grille td.oui { background: var(--vert-clair); }
+    .grille td.non { background: var(--rouge-clair); }
+    .grille td.vide { color: var(--doux); }
+    .grille td.hors { color: var(--ligne); }
+    .grille tfoot td { font-weight: 700; border-bottom: 0; }
+    .grille tfoot td.total { color: var(--vert); }
+    .legende { color: var(--doux); font-size: 13px; margin: 8px 2px 0; }
+    /* Joueurs */
+    .joueur { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 0; border-top: 1px solid var(--ligne); }
+    .joueur:first-child { border-top: 0; }
+    .joueur .qui-j b { display: block; }
+    .joueur .qui-j small { color: var(--doux); }
+    .joueur .actions-j { display: flex; gap: 6px; flex: none; }
+    .joueur .actions-j button {
+      min-height: 38px; padding: 0 10px; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte);
+      color: var(--texte); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
+    }
+    .pastille { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-left: 4px; }
+    .pastille.manque { background: var(--orange-clair); color: var(--orange); }
+    .pastille.complet { background: var(--vert-clair); color: var(--vert); }
+    .renommer { display: flex; gap: 6px; width: 100%; }
+    .renommer input { flex: 1; min-height: 42px; border-radius: 10px; border: 2px solid var(--jaune-fonce); padding: 0 10px; font-size: 16px; font-family: inherit; background: var(--carte); color: var(--texte); }
+    .renommer button { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 0; background: var(--jaune); color: #151515; font-weight: 700; font-family: inherit; cursor: pointer; }
+    .renommer button.annuler { background: var(--carte); color: var(--texte); border: 2px solid var(--ligne); }
     .info { background: var(--vert-clair); color: var(--vert); border-radius: 10px; padding: 10px 12px; font-weight: 600; margin: 12px 0; }
     [hidden] { display: none !important; }
   </style>
@@ -205,6 +239,7 @@
     var edition = null;        // rencontre en cours de modification (null = création)
     var brouillon = null;      // valeurs du formulaire de rencontre
     var messageCap = '';
+    var renommage = null;      // joueur en cours de renommage
     // 'matchs' | 'cap' (accueil) | 'cap-form' | 'cap-gerer' | 'cap-dispos'
     var vue = jetonDuLien ? 'cap' : 'matchs';
 
@@ -406,13 +441,17 @@
       if (vue === 'cap-form') return ecranFormRencontre();
       if (vue === 'cap-gerer') return ecranGerer();
       if (vue === 'cap-dispos') return ecranDispos();
+      if (vue === 'cap-tableau') return ecranTableau();
+      if (vue === 'cap-joueurs') return ecranJoueurs();
       var nbAttente = donnees.rencontres.filter(function (r) { return r.statut !== 'Validée'; }).length;
       return '<div class="cap"><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
         '<div class="tuiles">' +
           tuile('cap-form', '➕', 'Créer une rencontre', 'Date, adversaire, lieu…', true) +
           tuile('cap-gerer', '📅', 'Gérer les rencontres', 'Modifier, valider, supprimer' + (nbAttente ? ' · ' + nbAttente + ' en attente' : '')) +
-          tuile('cap-dispos', '👥', 'Dispos des joueurs', 'Qui vient à chaque match') +
+          tuile('cap-tableau', '📊', 'Tableau des dispos', 'Vue globale joueurs × matchs') +
+          tuile('cap-dispos', '👥', 'Dispos par match', 'Qui vient à chaque match') +
+          tuile('cap-joueurs', '👤', 'Joueurs', sansReponseTotal() ? sansReponseTotal() + ' sans réponse à tout' : 'Renommer, supprimer') +
           tuile('matchs', '🎾', 'Page des joueurs', 'Revenir aux matchs') +
         '</div>' +
         '<p class="pied"><button id="deconnexion-cap">Se déconnecter de l\'espace capitaines</button></p></div>';
@@ -511,7 +550,75 @@
       return html + '</div>';
     }
 
+    /** Rencontres à venir qui concernent un joueur (ses équipes). */
+    function matchsDe(j) {
+      return donnees.rencontres.filter(function (r) { return j.equipes.indexOf(r.equipe) !== -1; });
+    }
+    function nbReponsesDe(j) {
+      return matchsDe(j).filter(function (r) { return reponseDe(r.id, j.nom); }).length;
+    }
+    /** Nombre de joueurs qui n'ont répondu à aucun de leurs matchs. */
+    function sansReponseTotal() {
+      return donnees.joueurs.filter(function (j) { return matchsDe(j).length && !nbReponsesDe(j); }).length;
+    }
+    function dateCourte(iso) {
+      var p = iso.split('-');
+      var d = new Date(+p[0], +p[1] - 1, +p[2]);
+      return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }).replace('.', '');
+    }
+    function abregeEquipe(e) { return e.replace('Hommes ', 'H'); }
+
+    function ecranTableau() {
+      var html = enTeteCap('Tableau des dispos');
+      var rs = donnees.rencontres;
+      if (!rs.length || !donnees.joueurs.length) return html + '<div class="vide">Pas encore de rencontres ou de joueurs.</div></div>';
+      html += '<div class="defile"><table class="grille"><thead><tr><th class="nom">Joueur</th>' +
+        rs.map(function (r) {
+          return '<th><b>' + esc(dateCourte(r.date)) + '</b>' + esc(abregeEquipe(r.equipe)) + ' ' + (r.lieu === 'Domicile' ? '🏠' : r.lieu === 'Extérieur' ? '🚗' : '') + '</th>';
+        }).join('') + '<th>Répondu</th></tr></thead><tbody>';
+      donnees.joueurs.forEach(function (j) {
+        var n = 0, total = 0;
+        html += '<tr><td class="nom">' + esc(j.nom) + '</td>' + rs.map(function (r) {
+          if (j.equipes.indexOf(r.equipe) === -1) return '<td class="hors">·</td>';
+          total++;
+          var rep = reponseDe(r.id, j.nom);
+          if (rep) n++;
+          return rep === 'Présent' ? '<td class="oui">✅</td>' : rep === 'Absent' ? '<td class="non">❌</td>' : '<td class="vide">–</td>';
+        }).join('') + '<td>' + n + '/' + total + '</td></tr>';
+      });
+      html += '</tbody><tfoot><tr><td class="nom">Dispos</td>' + rs.map(function (r) {
+        return '<td class="total">' + bilan(r).presents.length + '</td>';
+      }).join('') + '<td></td></tr></tfoot></table></div>' +
+        '<p class="legende">✅ dispo · ❌ pas dispo · – pas encore répondu. Fais glisser le tableau vers la gauche pour voir tous les matchs.</p>';
+      return html + '</div>';
+    }
+
+    function ecranJoueurs() {
+      var html = enTeteCap('Joueurs');
+      if (!donnees.joueurs.length) return html + '<div class="vide">Aucun joueur inscrit pour le moment.</div></div>';
+      // Ceux à qui il manque le plus de réponses d'abord.
+      var liste = donnees.joueurs.map(function (j) {
+        return { j: j, total: matchsDe(j).length, n: nbReponsesDe(j) };
+      }).sort(function (a, b) { return (b.total - b.n) - (a.total - a.n) || a.j.nom.localeCompare(b.j.nom, 'fr'); });
+      var silencieux = liste.filter(function (x) { return x.total && !x.n; }).map(function (x) { return x.j.nom; });
+      html += '<p class="sous">' + donnees.joueurs.length + ' joueur' + (donnees.joueurs.length > 1 ? 's' : '') + ' inscrit' +
+        (donnees.joueurs.length > 1 ? 's' : '') + '.' + (silencieux.length ? ' Pas encore répondu du tout : <b>' + esc(silencieux.join(', ')) + '</b>.' : '') + '</p>';
+      html += '<div class="carte">' + liste.map(function (x) {
+        var j = x.j, manque = x.total - x.n;
+        if (renommage === j.nom) {
+          return '<div class="joueur"><form class="renommer" id="form-renommer"><input id="nouveau-nom" value="' + esc(j.nom) + '" maxlength="40">' +
+            '<button type="submit">OK</button><button type="button" class="annuler" id="annuler-renommage">✕</button></form></div>';
+        }
+        return '<div class="joueur"><div class="qui-j"><b>' + esc(j.nom) + '</b><small>' + x.n + '/' + x.total + ' réponses' +
+          (manque ? '<span class="pastille manque">' + manque + ' sans réponse</span>' : (x.total ? '<span class="pastille complet">à jour</span>' : '')) +
+          '</small></div><div class="actions-j"><button data-renommer="' + esc(j.nom) + '">✏️</button>' +
+          '<button data-supprimer-joueur="' + esc(j.nom) + '">🗑</button></div></div>';
+      }).join('') + '</div>';
+      return html + '</div>';
+    }
+
     function allerA(nouvelleVue) {
+      renommage = null;
       if (nouvelleVue !== vue) messageCap = '';
       vue = nouvelleVue;
       rendre();
@@ -524,7 +631,7 @@
       var run = google.script.run
         .withSuccessHandler(function (r) {
           donneesCap = r;
-          succes();
+          succes(r);
           charger(); // met à jour la page des joueurs avec la Sheet
         })
         .withFailureHandler(function (err) {
@@ -579,6 +686,21 @@
           messageCap = 'Rencontre du ' + dateDansPhrase(supprimee.date) + ' supprimée.';
           vue = 'cap-gerer';
         });
+      } else if (cible.hasAttribute('data-renommer')) {
+        renommage = cible.getAttribute('data-renommer');
+        rendre();
+        var champNom = document.getElementById('nouveau-nom');
+        if (champNom) { champNom.focus(); champNom.select(); }
+      } else if (cible.id === 'annuler-renommage') {
+        renommage = null;
+        rendre();
+      } else if (cible.hasAttribute('data-supprimer-joueur')) {
+        var nomSuppr = cible.getAttribute('data-supprimer-joueur');
+        if (!confirm('Supprimer ' + nomSuppr + ' et toutes ses réponses ?')) return;
+        appelCap('supprimerJoueur', [nomSuppr], function () {
+          messageCap = nomSuppr + ' a été supprimé.';
+          if (moi === nomSuppr) { moi = null; ecrireNom(null); }
+        });
       } else if (cible.id === 'deconnexion-cap') {
         google.script.run.deconnecterCapitaine(jeton);
         deconnexionCap();
@@ -608,6 +730,16 @@
           .withSuccessHandler(function (msg) { messageCap = msg; rendre(); })
           .withFailureHandler(function (err) { bouton.disabled = false; afficherErreur(err && err.message ? err.message : 'Envoi impossible.'); })
           .demanderLienCapitaine(email);
+        return;
+      }
+      if (e.target.id === 'form-renommer') {
+        e.preventDefault();
+        var ancien = renommage, saisi = document.getElementById('nouveau-nom').value;
+        appelCap('renommerJoueur', [ancien, saisi], function (r) {
+          messageCap = ancien + ' s\'appelle maintenant ' + r.nom + '.';
+          if (moi === ancien) { moi = r.nom; ecrireNom(moi); }
+          renommage = null;
+        });
         return;
       }
       if (e.target.id === 'form-rencontre') {
