@@ -200,8 +200,10 @@ function importerCalendrier() {
  * Google (dont l'envoi des mails de connexion des capitaines).
  */
 function autoriserScript() {
-  var quota = MailApp.getRemainingDailyQuota();
-  SpreadsheetApp.getUi().alert('Autorisations OK. Mails de connexion encore possibles aujourd\'hui : ' + quota + '.');
+  var message = 'Autorisations OK. Mails de connexion encore possibles aujourd\'hui : ' + MailApp.getRemainingDailyQuota() + '.';
+  // Message non bloquant : lancée depuis l'éditeur, une boîte de dialogue attendrait un clic dans la Sheet.
+  console.log(message);
+  SpreadsheetApp.getActive().toast(message, '🔑 Autorisations', 10);
 }
 
 function afficherLienPage() {
