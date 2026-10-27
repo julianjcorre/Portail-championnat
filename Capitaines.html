@@ -14,18 +14,20 @@
       --orange: #a8640a;
       --orange-clair: #fdf1dc;
       --rouge: #c0392b;
+      --noir: #151515;
+      --jaune: #f5c000;
     }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 12px; color: var(--texte); font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     h2 { font-size: 15px; margin: 0 0 10px; }
     button { font: inherit; cursor: pointer; border-radius: 8px; }
-    .principal { background: var(--vert); color: #fff; border: 0; padding: 9px 12px; font-weight: 600; }
+    .principal { background: var(--noir); color: var(--jaune); border: 0; padding: 9px 12px; font-weight: 600; }
     .second { background: #fff; color: var(--texte); border: 1px solid var(--ligne); padding: 8px 10px; }
     .danger { background: #fff; color: var(--rouge); border: 1px solid var(--rouge); padding: 8px 10px; }
     .petit { background: none; border: 1px solid var(--ligne); padding: 3px 8px; font-size: 12px; }
     button:disabled { opacity: .5; cursor: default; }
     .plein { width: 100%; }
-    .jour { font-weight: 700; margin: 16px 0 6px; }
+    .jour { font-weight: 700; margin: 16px 0 6px; border-left: 4px solid var(--jaune); padding-left: 6px; }
     .rencontre { border: 1px solid var(--ligne); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; }
     .titre { font-weight: 600; }
     .details { color: var(--doux); font-size: 12px; margin: 2px 0 6px; }
