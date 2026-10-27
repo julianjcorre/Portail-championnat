@@ -38,7 +38,7 @@ Connexion :
 Vignettes :
 - **➕ Créer une rencontre** : date, heure, équipe, adversaire, lieu, statut, infos.
 - **📅 Gérer les rencontres** : modifier, valider / remettre en attente, supprimer (supprime aussi les réponses à ce match).
-- **📊 Tableau des dispos** : vue globale, une ligne par joueur, une colonne par match (✅ / ❌ / – pas répondu), total des dispos par match et nombre de réponses par joueur. Le tableau défile horizontalement, la colonne des noms reste fixe. Filtre par journée (boutons au-dessus) : n'affiche que les matchs du jour et trie les joueurs (dispos, puis sans réponse, puis pas dispos).
+- **📊 Tableau des dispos** : vue globale, une ligne par joueur, une colonne par match (✅ / ❌ / – pas répondu), total des dispos par match et nombre de réponses par joueur. Le tableau défile horizontalement, la colonne des noms reste fixe. Filtre par journée (boutons au-dessus) : n'affiche que les matchs du jour et trie les joueurs (dispos, puis sans réponse, puis pas dispos). Filtre par réponse (Tous / ✅ Dispo / ❌ Pas dispo / – Non voté, avec le nombre de joueurs) : garde les joueurs ayant au moins une case de ce type parmi les matchs affichés ; combinable avec le filtre par journée.
 - **👥 Dispos par match** : pour chaque match, qui est dispo, pas dispo, sans réponse.
 - **👤 Joueurs** : inscrits triés par nombre de réponses manquantes (ceux qui n'ont jamais répondu en tête) ; renommer (refusé si le nom existe déjà) ou supprimer un joueur (ses réponses avec).
 - **🎾 Page des joueurs**.

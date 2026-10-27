@@ -184,6 +184,7 @@
       flex: none; min-height: 38px; padding: 0 14px; border-radius: 999px; border: 2px solid var(--ligne);
       background: var(--carte); color: var(--texte); font-weight: 600; font-size: 14px; font-family: inherit; cursor: pointer;
     }
+    .filtres.retour { flex-wrap: wrap; overflow-x: visible; }
     .filtres button.choisi { background: var(--noir); border-color: var(--noir); color: var(--jaune); }
     @media (prefers-color-scheme: dark) { .filtres button.choisi { border-color: var(--jaune); } }
     .legende { color: var(--doux); font-size: 13px; margin: 8px 2px 0; }
@@ -248,6 +249,7 @@
     var messageCap = '';
     var renommage = null;      // joueur en cours de renommage
     var filtreJour = '';       // journée affichée dans le tableau des dispos ('' = toutes)
+    var filtreReponse = '';    // '' | 'Présent' | 'Absent' | 'aucune' : joueurs ayant au moins une case de ce type
     // 'matchs' | 'cap' (accueil) | 'cap-form' | 'cap-gerer' | 'cap-dispos'
     var vue = jetonDuLien ? 'cap' : 'matchs';
 
@@ -594,6 +596,23 @@
       var joueurs = filtreJour
         ? donnees.joueurs.slice().sort(function (a, b) { return rang(a) - rang(b) || a.nom.localeCompare(b.nom, 'fr'); })
         : donnees.joueurs;
+
+      // Filtre par réponse : garde les joueurs qui ont au moins une case de ce type parmi les matchs affichés.
+      var aCase = function (j, type) {
+        return rs.some(function (r) {
+          if (j.equipes.indexOf(r.equipe) === -1) return false;
+          var rep = reponseDe(r.id, j.nom);
+          return type === 'aucune' ? !rep : rep === type;
+        });
+      };
+      var types = [['', 'Tous'], ['Présent', '✅ Dispo'], ['Absent', '❌ Pas dispo'], ['aucune', '– Non voté']];
+      html += '<div class="filtres retour">' + types.map(function (t) {
+        var nb = t[0] ? joueurs.filter(function (j) { return aCase(j, t[0]); }).length : joueurs.length;
+        return '<button data-filtre-reponse="' + t[0] + '"' + (t[0] === filtreReponse ? ' class="choisi"' : '') + '>' +
+          t[1] + ' (' + nb + ')</button>';
+      }).join('') + '</div>';
+      if (filtreReponse) joueurs = joueurs.filter(function (j) { return aCase(j, filtreReponse); });
+      if (!joueurs.length) return html + '<div class="vide">Aucun joueur pour ce filtre.</div></div>';
       html += '<div class="defile"><table class="grille"><thead><tr><th class="nom">Joueur</th>' +
         rs.map(function (r) {
           return '<th><b>' + esc(dateCourte(r.date)) + '</b>' + esc(abregeEquipe(r.equipe)) + ' ' + (r.lieu === 'Domicile' ? '🏠' : r.lieu === 'Extérieur' ? '🚗' : '') + '</th>';
@@ -709,6 +728,9 @@
           messageCap = 'Rencontre du ' + dateDansPhrase(supprimee.date) + ' supprimée.';
           vue = 'cap-gerer';
         });
+      } else if (cible.hasAttribute('data-filtre-reponse')) {
+        filtreReponse = cible.getAttribute('data-filtre-reponse');
+        rendre();
       } else if (cible.hasAttribute('data-filtre-jour')) {
         filtreJour = cible.getAttribute('data-filtre-jour');
         rendre();
