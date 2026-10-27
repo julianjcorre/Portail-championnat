@@ -43,7 +43,7 @@
     header {
       background: var(--vert);
       color: #fff;
-      padding: 14px 16px 0;
+      padding: 14px 16px;
       position: sticky;
       top: 0;
       z-index: 2;
@@ -56,13 +56,6 @@
       background: none; border: 0; color: inherit; text-decoration: underline;
       font: inherit; padding: 4px 0; cursor: pointer;
     }
-    nav { display: flex; margin-top: 10px; }
-    nav button {
-      flex: 1; background: none; border: 0; color: #fff; opacity: .75;
-      font-weight: 600; font-size: 16px; font-family: inherit; padding: 12px 0;
-      border-bottom: 3px solid transparent; cursor: pointer;
-    }
-    nav button.actif { opacity: 1; border-bottom-color: var(--accent); }
     main { max-width: 640px; margin: 0 auto; padding: 16px; }
     .carte {
       background: var(--carte);
@@ -100,7 +93,7 @@
       border-radius: 10px; padding: 10px 12px; margin: 8px 0;
     }
     .rencontre { border-top: 1px solid var(--ligne); padding: 10px 0; }
-    .rencontre:first-of-type { border-top: 0; }
+    .jour + .rencontre, .alerte + .rencontre { border-top: 0; padding-top: 4px; }
     .rencontre .match { font-size: 16px; margin: 2px 0; }
     .compte { font-size: 14px; color: var(--doux); }
     .qui h2 { margin: 4px 0 4px; font-size: 22px; }
@@ -132,10 +125,6 @@
       <h1>🎾 <?= nomClub ?> – Championnat</h1>
       <div class="moi" id="moi" hidden></div>
     </div>
-    <nav id="onglets" hidden>
-      <button data-onglet="mes" class="actif">Mes matchs</button>
-      <button data-onglet="club">Tout le club</button>
-    </nav>
   </header>
 
   <main id="contenu"><div class="chargement">Chargement…</div></main>
@@ -144,7 +133,6 @@
   <script>
     var CLE_NOM = 'tcb-championnat-nom';
     var donnees = null;
-    var onglet = 'mes';
     var enCours = {}; // rencontres dont la réponse part au serveur
     var inscription = { nom: '', choixGroupe: false, envoi: false };
 
@@ -207,7 +195,6 @@
     // --- Écrans ---
     function rendre() {
       var contenu = document.getElementById('contenu');
-      var nav = document.getElementById('onglets');
       var zoneMoi = document.getElementById('moi');
 
       if (!donnees) return;
@@ -216,19 +203,14 @@
 
       if (!moi || !joueur(moi)) {
         moi = null;
-        nav.hidden = true;
         zoneMoi.hidden = true;
         contenu.innerHTML = ecranQui();
         return;
       }
 
-      nav.hidden = false;
       zoneMoi.hidden = false;
       zoneMoi.innerHTML = esc(moi) + ' · <button id="changer">changer</button>';
-      Array.prototype.forEach.call(nav.querySelectorAll('button'), function (b) {
-        b.classList.toggle('actif', b.getAttribute('data-onglet') === onglet);
-      });
-      contenu.innerHTML = onglet === 'mes' ? ecranMesMatchs() : ecranClub();
+      contenu.innerHTML = ecranListe();
     }
 
     /** Même clé que côté serveur : sans accents, majuscules, points ni espaces. */
@@ -262,14 +244,18 @@
       return html + '<button class="lien" id="corriger-nom">← Corriger mon nom</button></div>';
     }
 
-    function ecranMesMatchs() {
-      var mesEquipes = joueur(moi).equipes;
-      var miens = donnees.rencontres.filter(function (r) { return mesEquipes.indexOf(r.equipe) !== -1; });
-      if (!miens.length) {
-        return '<div class="vide">Aucune rencontre à venir pour ' + esc(mesEquipes.join(', ') || 'ton équipe') + '.</div>';
-      }
-      // Une carte par jour : un joueur de plusieurs équipes répond une seule fois.
-      return parJour(miens).map(function (j) { return carteJour(j.date, j.rencontres); }).join('');
+    /** Tous les matchs du club, par date ; chacun peut répondre sur chaque match. */
+    function ecranListe() {
+      if (!donnees.rencontres.length) return '<div class="vide">Aucune rencontre à venir.</div>';
+      return parJour(donnees.rencontres).map(function (j) {
+        var domicile = j.rencontres.filter(function (r) { return r.lieu === 'Domicile'; }).length;
+        var html = '<div class="carte"><p class="jour">' + esc(dateLongue(j.date)) + '</p>';
+        if (domicile > donnees.maxDomicileParJour) {
+          html += '<div class="alerte">⚠️ ' + domicile + ' rencontres à domicile ce jour-là, pour ' +
+            donnees.nbTerrains + ' terrains.</div>';
+        }
+        return html + j.rencontres.map(carteRencontre).join('') + '</div>';
+      }).join('');
     }
 
     function parJour(rencontres) {
@@ -281,44 +267,19 @@
       return jours;
     }
 
-    /** Réponse commune d'un joueur à plusieurs rencontres ('' si aucune ou si elles diffèrent). */
-    function reponseCommune(rencontres, nom) {
-      var reps = rencontres.map(function (r) { return reponseDe(r.id, nom); });
-      return reps.every(function (x) { return x === reps[0]; }) ? reps[0] : '';
-    }
-
-    /** Dispos de la journée, sur l'ensemble des joueurs des équipes qui jouent ce jour-là. */
-    function bilanJour(rencontres) {
-      var presents = [], absents = [], sansReponse = [], vus = {};
-      rencontres.forEach(function (r) {
-        joueursEquipe(r.equipe).forEach(function (j) {
-          if (vus[j.nom]) return;
-          vus[j.nom] = true;
-          var reps = rencontres.map(function (x) { return reponseDe(x.id, j.nom); });
-          (reps.indexOf('Présent') !== -1 ? presents : reps.indexOf('Absent') !== -1 ? absents : sansReponse).push(j.nom);
-        });
-      });
-      return { presents: presents, absents: absents, sansReponse: sansReponse };
-    }
-
-    function carteJour(date, rencontres) {
-      var ids = rencontres.map(function (r) { return r.id; }).join(',');
-      var rep = reponseCommune(rencontres, moi);
-      var b = bilanJour(rencontres);
-      var occupe = enCours[ids] ? ' disabled' : '';
-      var html = '<div class="carte"><p class="jour">' + esc(dateLongue(date)) + '</p>';
-      rencontres.forEach(function (r) {
-        html += '<div class="rencontre">' +
-          '<div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
-          '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
-          '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
-          (r.infos ? '<div class="infos">' + esc(r.infos) + '</div>' : '') +
-          '</div>';
-      });
-      html += '<div class="boutons">' +
-          '<button class="oui' + (rep === 'Présent' ? ' choisi' : '') + '" data-ids="' + esc(ids) + '" data-rep="Présent"' + occupe + '>' +
+    function carteRencontre(r) {
+      var rep = reponseDe(r.id, moi);
+      var b = bilan(r);
+      var occupe = enCours[r.id] ? ' disabled' : '';
+      return '<div class="rencontre">' +
+        '<div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
+        '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
+        '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+        (r.infos ? '<div class="infos">' + esc(r.infos) + '</div>' : '') +
+        '<div class="boutons">' +
+          '<button class="oui' + (rep === 'Présent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Présent"' + occupe + '>' +
             (rep === 'Présent' ? '✅ ' : '') + 'Je suis dispo</button>' +
-          '<button class="non' + (rep === 'Absent' ? ' choisi' : '') + '" data-ids="' + esc(ids) + '" data-rep="Absent"' + occupe + '>' +
+          '<button class="non' + (rep === 'Absent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Absent"' + occupe + '>' +
             (rep === 'Absent' ? '❌ ' : '') + 'Pas dispo</button>' +
         '</div>' +
         (rep ? '<div class="aide">Touche à nouveau pour annuler ta réponse.</div>' : '') +
@@ -329,71 +290,35 @@
           ligneNoms('… Pas répondu', b.sansReponse) +
         '</div></details>' +
         '</div>';
-      return html;
     }
 
     function ligneNoms(titre, noms) {
       return '<div><b>' + titre + '</b> ' + (noms.length ? esc(noms.join(', ')) : '–') + '</div>';
     }
 
-    function ecranClub() {
-      if (!donnees.rencontres.length) return '<div class="vide">Aucune rencontre à venir.</div>';
-      return parJour(donnees.rencontres).map(function (j) {
-        var jour = j.date;
-        var rs = j.rencontres;
-        var domicile = rs.filter(function (r) { return r.lieu === 'Domicile'; }).length;
-        var html = '<div class="carte"><p class="jour">' + esc(dateLongue(jour)) + '</p>';
-        if (domicile > donnees.maxDomicileParJour) {
-          html += '<div class="alerte">⚠️ ' + domicile + ' rencontres à domicile ce jour-là, pour ' +
-            donnees.nbTerrains + ' terrains.</div>';
-        }
-        rs.forEach(function (r) {
-          var b = bilan(r);
-          html += '<div class="rencontre">' +
-            '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
-            '<div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
-            '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
-            '<div class="compte">✅ ' + compte(b.presents.length, 'dispo', 'dispos') +
-            ' · ❌ ' + compte(b.absents.length, 'pas dispo', 'pas dispos') +
-            ' · … ' + b.sansReponse.length + ' sans réponse</div>' +
-            '</div>';
-        });
-        return html + '</div>';
-      }).join('');
-    }
-
-    // --- Actions ---
-    /** cle : ids des rencontres de la journée, séparés par des virgules. */
-    function repondre(cle, rep) {
-      var ids = cle.split(',');
-      var anciennes = {};
-      ids.forEach(function (id) { anciennes[id] = reponseDe(id, moi); });
-      var rencontres = ids.map(function (id) { return { id: id }; });
-      var nouvelle = reponseCommune(rencontres, moi) === rep ? '' : rep; // toucher à nouveau = annuler
+    function repondre(id, rep) {
+      var ancienne = reponseDe(id, moi);
+      var nouvelle = ancienne === rep ? '' : rep; // toucher à nouveau = annuler
 
       // Affichage immédiat, corrigé si le serveur refuse.
-      ids.forEach(function (id) {
-        donnees.reponses[id] = donnees.reponses[id] || {};
-        if (nouvelle) donnees.reponses[id][moi] = nouvelle; else delete donnees.reponses[id][moi];
-      });
-      enCours[cle] = true;
+      donnees.reponses[id] = donnees.reponses[id] || {};
+      if (nouvelle) donnees.reponses[id][moi] = nouvelle; else delete donnees.reponses[id][moi];
+      enCours[id] = true;
       rendre();
 
       google.script.run
         .withSuccessHandler(function (reponses) {
-          delete enCours[cle];
+          delete enCours[id];
           donnees.reponses = reponses;
           rendre();
         })
         .withFailureHandler(function (err) {
-          delete enCours[cle];
-          ids.forEach(function (id) {
-            if (anciennes[id]) donnees.reponses[id][moi] = anciennes[id]; else delete donnees.reponses[id][moi];
-          });
+          delete enCours[id];
+          if (ancienne) donnees.reponses[id][moi] = ancienne; else delete donnees.reponses[id][moi];
           rendre();
           afficherErreur('Réponse non enregistrée : ' + (err && err.message ? err.message : 'problème de connexion') + '. Réessaie.');
         })
-        .repondre(ids, moi, nouvelle);
+        .repondre([id], moi, nouvelle);
     }
 
     document.addEventListener('click', function (e) {
@@ -409,12 +334,8 @@
         ecrireNom(null);
         inscription = { nom: '', choixGroupe: false, envoi: false };
         rendre();
-      } else if (cible.hasAttribute('data-onglet')) {
-        onglet = cible.getAttribute('data-onglet');
-        rendre();
-        window.scrollTo(0, 0);
       } else if (cible.hasAttribute('data-rep')) {
-        repondre(cible.getAttribute('data-ids'), cible.getAttribute('data-rep'));
+        repondre(cible.getAttribute('data-id'), cible.getAttribute('data-rep'));
       }
     });
 
@@ -433,7 +354,6 @@
       moi = nom;
       ecrireNom(moi);
       inscription = { nom: '', choixGroupe: false, envoi: false };
-      onglet = 'mes';
       rendre();
       window.scrollTo(0, 0);
     }

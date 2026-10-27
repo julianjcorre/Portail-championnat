@@ -19,8 +19,8 @@ Techniquement : une Google Sheet + un script Apps Script publié en « Applicati
 2. La 1re fois, ils écrivent leur prénom et l'initiale de leur nom (« Julien C. »). Le téléphone s'en souvient.
    - Nom déjà dans l'onglet Joueurs (sans tenir compte des majuscules, accents, points) : reconnu directement.
    - Nouveau nom : la page demande « Hommes » ou « Femmes » et l'ajoute à l'onglet Joueurs (Hommes → Hommes 1 et Hommes 2), avec la date d'inscription.
-3. **Mes matchs** : une carte par jour, avec un gros bouton « Je suis dispo » / « Pas dispo ». Un joueur de plusieurs équipes répond une seule fois pour la journée (la réponse vaut pour toutes ses rencontres du jour). Toucher à nouveau annule la réponse. On voit le statut de chaque date, l'heure, domicile/extérieur, les infos, et qui est dispo / qui n'a pas répondu.
-4. **Tout le club** : toutes les rencontres par jour, avec une alerte rouge quand il y a plus de rencontres à domicile que le seuil fixé (2 terrains).
+3. Une seule liste : **tous les matchs du club**, par date. Sur chaque match, un gros bouton « Je suis dispo » / « Pas dispo » (n'importe quel joueur peut répondre sur n'importe quel match). Toucher à nouveau annule la réponse.
+4. Pour chaque match : statut de la date, heure, domicile/extérieur, infos, et la liste des dispos / pas dispos / sans réponse (joueurs de l'équipe concernée). Alerte rouge quand il y a trop de rencontres à domicile le même jour (2 terrains).
 
 ## Côté bureau
 
