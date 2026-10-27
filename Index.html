@@ -400,6 +400,9 @@
         ? '<span class="badge validee">✅ Date validée</span>'
         : '<span class="badge attente">⏳ En attente de convocation</span>';
     }
+    function badgeTerrains(r) {
+      return r.terrains ? '<span class="badge">🎾 ' + r.terrains + ' terrain' + (r.terrains === '2' ? 's' : '') + '</span>' : '';
+    }
     function badgeLieu(r) {
       var texte = r.lieu === 'Domicile' ? '🏠 Domicile' : r.lieu === 'Extérieur' ? '🚗 Extérieur' : '📍 Lieu à venir';
       return '<span class="badge">' + texte + '</span>';
@@ -570,7 +573,7 @@
       return '<div class="rencontre">' +
         '<div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
         '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
-        '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+        '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + badgeTerrains(r) + '</div>' +
         (r.infos ? '<div class="infos">' + esc(r.infos) + '</div>' : '') +
         blocComposition(r) +
         '<div class="boutons">' +
@@ -596,7 +599,7 @@
       var badge = !monRole ? '' : monRole === 'Remplaçant' ? '🔄 Tu es remplaçant' :
         /^N°\d$/.test(monRole) ? '🏆 Tu joues en n°' + monRole.slice(2) : '🏆 Tu es retenu dans l\'équipe';
       return (badge ? '<div class="retenu">' + badge + '</div>' : '') +
-        '<div class="compo"><b>🏆 Ordre de jeu :</b>' + (t.length ? '<ol class="ordre">' + t.map(function (x) {
+        '<div class="compo"><b>🏆 Ordre de jeu (simples) :</b>' + (t.length ? '<ol class="ordre">' + t.map(function (x) {
           return '<li' + (x.nom === moi ? ' class="moi-compo"' : '') + '><span>' + esc(x.n ? 'n°' + x.n : '•') + '</span> ' + esc(x.nom) + '</li>';
         }).join('') + '</ol>' : ' à venir') +
         (rp.length ? '<b>🔄 Remplaçant' + (rp.length > 1 ? 's' : '') + ' :</b> ' + esc(rp.join(', ')) : '') + '</div>';
@@ -705,6 +708,8 @@
           boutonsChoix('lieu', ['Domicile', 'Extérieur', ''], b.lieu, { '': 'À venir', 'Domicile': '🏠 Domicile', 'Extérieur': '🚗 Extérieur' }) + '</div></div>' +
         '<div class="champ"><label>Statut</label><div class="choix">' +
           boutonsChoix('statut', ['En attente', 'Validée'], b.statut, { 'En attente': '⏳ En attente', 'Validée': '✅ Validée' }) + '</div></div>' +
+        '<div class="champ"><label>Terrains</label><div class="choix">' +
+          boutonsChoix('terrains', ['1', '2', ''], b.terrains, { '1': '🎾 1 terrain', '2': '🎾 2 terrains', '': 'À préciser' }) + '</div></div>' +
         '<div class="champ"><label for="r-infos">Infos pour les joueurs</label><textarea id="r-infos" placeholder="ex. RDV 8h30 au club">' + esc(b.infos) + '</textarea></div>' +
         '<button class="gros" type="submit">' + (edition ? 'Enregistrer les modifications' : 'Créer la rencontre') + '</button>';
       if (edition) html += '<button class="gros danger" type="button" id="supprimer-rencontre">Supprimer cette rencontre</button>';
@@ -729,8 +734,8 @@
     function ouvrirForm(r) {
       edition = r || null;
       brouillon = r
-        ? { id: r.id, date: r.date, heure: r.heure, equipe: r.equipe, adversaire: r.adversaire, lieu: r.lieu, statut: r.statut, infos: r.infos }
-        : { id: '', date: '', heure: '', equipe: donnees.equipes[0], adversaire: '', lieu: '', statut: 'En attente', infos: '' };
+        ? { id: r.id, date: r.date, heure: r.heure, equipe: r.equipe, adversaire: r.adversaire, lieu: r.lieu, statut: r.statut, infos: r.infos, terrains: r.terrains }
+        : { id: '', date: '', heure: '', equipe: donnees.equipes[0], adversaire: '', lieu: '', statut: 'En attente', infos: '', terrains: '' };
       allerA('cap-form');
     }
 
@@ -742,7 +747,7 @@
           var nb = Object.keys(donnees.reponses[r.id] || {}).length;
           return '<div class="rencontre"><div class="match">' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</div>' +
             '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + ' · ' + nb + ' réponse' + (nb > 1 ? 's' : '') + '</div>' +
-            '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+            '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + badgeTerrains(r) + '</div>' +
             '<div class="ligne-cap"><button data-modifier="' + esc(r.id) + '">✏️ Modifier</button>' +
             '<button data-basculer="' + esc(r.id) + '">' + (r.statut === 'Validée' ? '⏳ Remettre en attente' : '✅ Valider') + '</button></div></div>';
         }).join('') + '</div>';
@@ -896,12 +901,13 @@
       var html = '<div class="cap"><button class="lien" id="retour-selection">← Tous les matchs</button>' +
         '<h2>' + esc(r.equipe) + ' – ' + esc(r.adversaire || 'Adversaire à venir') + '</h2>' +
         '<p class="sous">' + esc(dateLongue(r.date)) + ' · ' + esc(r.heure || 'heure à venir') + ' · ' +
-        (r.lieu === 'Domicile' ? '🏠 Domicile' : r.lieu === 'Extérieur' ? '🚗 Extérieur' : 'lieu à venir') + '</p>';
+        (r.lieu === 'Domicile' ? '🏠 Domicile' : r.lieu === 'Extérieur' ? '🚗 Extérieur' : 'lieu à venir') +
+        (r.terrains ? ' · 🎾 ' + r.terrains + ' terrain' + (r.terrains === '2' ? 's' : '') : '') + '</p>';
       var nb = donnees.nbPositions || 4, occupant = {};
       Object.keys(sel).forEach(function (nom) { occupant[sel[nom]] = nom; });
       var pos = [];
       for (var k = 1; k <= nb; k++) pos.push(k);
-      html += '<div class="carte"><p class="groupe-titre" style="margin-top:0">🏆 Ordre de jeu</p><div class="positions">' +
+      html += '<div class="carte"><p class="groupe-titre" style="margin-top:0">🏆 Ordre de jeu des simples</p><div class="positions">' +
         pos.map(function (k) {
           var nom = occupant['N°' + k];
           return '<span class="num">n°' + k + '</span>' + (nom ? '<span>' + esc(nom) + '</span>' : '<span class="libre">à choisir</span>');
@@ -934,8 +940,9 @@
       var chiffres = ['', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
       return '🎾 TC Bazoges – ' + r.equipe + ' vs ' + (r.adversaire || 'adversaire à venir') + '\n' +
         '📅 ' + dateLongue(r.date) + (r.heure ? ' · ' + r.heure : '') +
-        (r.lieu === 'Domicile' ? ' · 🏠 Domicile' : r.lieu === 'Extérieur' ? ' · 🚗 Extérieur' : '') + '\n' +
-        '🏆 Ordre de jeu :' + (t.length ? '\n' + t.map(function (x) { return (chiffres[x.n] || '•') + ' ' + x.nom; }).join('\n') : ' à venir') + '\n' +
+        (r.lieu === 'Domicile' ? ' · 🏠 Domicile' : r.lieu === 'Extérieur' ? ' · 🚗 Extérieur' : '') +
+        (r.terrains ? ' · 🎾 ' + r.terrains + ' terrain' + (r.terrains === '2' ? 's' : '') : '') + '\n' +
+        '🏆 Ordre de jeu (simples) :' + (t.length ? '\n' + t.map(function (x) { return (chiffres[x.n] || '•') + ' ' + x.nom; }).join('\n') : ' à venir') + '\n' +
         (rp.length ? '🔄 Remplaçant' + (rp.length > 1 ? 's' : '') + ' : ' + rp.join(', ') + '\n' : '') +
         (r.infos ? 'ℹ️ ' + r.infos + '\n' : '') +
         '👉 ' + (surAppsScript ? URL_API : location.origin + location.pathname);

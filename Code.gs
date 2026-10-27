@@ -43,12 +43,13 @@ var ONGLET_JOUEURS = 'Joueurs';
 var ONGLET_REPONSES = 'Réponses';
 var ONGLET_SELECTION = 'Sélection';
 
-var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos'];
+var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos', 'Terrains'];
 var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le'];
 var ENTETES_REPONSES = ['ID rencontre', 'Nom', 'Réponse', 'Répondu le'];
 var ENTETES_SELECTION = ['ID rencontre', 'Nom', 'Rôle', 'Modifié le'];
 
 var LIEUX = ['Domicile', 'Extérieur'];
+var TERRAINS = ['1', '2'];
 var STATUTS = ['Validée', 'En attente'];
 var REPONSES = ['Présent', 'Absent'];
 // Nombre de positions de jeu (n°1, n°2…) dans la sélection d'une équipe.
@@ -85,13 +86,14 @@ function installerOnglets() {
     preparerEntetes_(rencontres, ENTETES_RENCONTRES);
     rencontres.getRange('B:B').setNumberFormat('dd/mm/yyyy');
     rencontres.getRange('C:C').setNumberFormat('@');
-    rencontres.getRange(2, 1, 3, ENTETES_RENCONTRES.length).setValues([
-      [nouvelId_(), dansUneSemaine, '09:00', 'Hommes 1', 'TC Exemple', 'Domicile', 'Validée', 'RDV 8h30 au club'],
-      [nouvelId_(), dansUneSemaine, '14:00', 'Hommes 2', 'AS Exemple', 'Domicile', 'En attente', ''],
+    rencontres.getRange(2, 1, 2, ENTETES_RENCONTRES.length).setValues([
+      [nouvelId_(), dansUneSemaine, '09:00', 'Hommes 1', 'TC Exemple', 'Domicile', 'Validée', 'RDV 8h30 au club', '2'],
+      [nouvelId_(), dansUneSemaine, '14:00', 'Hommes 2', 'AS Exemple', 'Domicile', 'En attente', '', ''],
     ]);
     ajouterListe_(rencontres, 'D2:D', EQUIPES);
     ajouterListe_(rencontres, 'F2:F', LIEUX);
     ajouterListe_(rencontres, 'G2:G', STATUTS);
+    ajouterListe_(rencontres, 'I2:I', TERRAINS);
     rencontres.hideColumns(1);
   }
 
@@ -515,6 +517,8 @@ function enregistrerRencontre(jeton, r) {
   if (!m) throw new Error('Date invalide.');
   if (EQUIPES.indexOf(r.equipe) === -1) throw new Error('Équipe inconnue.');
   if (r.lieu && LIEUX.indexOf(r.lieu) === -1) throw new Error('Lieu inconnu.');
+  var terrains = String(r.terrains || '');
+  if (terrains && TERRAINS.indexOf(terrains) === -1) throw new Error('Nombre de terrains invalide.');
   if (STATUTS.indexOf(r.statut) === -1) throw new Error('Statut inconnu.');
   var valeurs = [
     new Date(+m[1], +m[2] - 1, +m[3]),
@@ -524,12 +528,15 @@ function enregistrerRencontre(jeton, r) {
     r.lieu || '',
     r.statut,
     String(r.infos || '').trim(),
+    terrains,
   ];
 
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
   try {
     var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_RENCONTRES);
+    // Colonne Terrains ajoutée après coup : en-tête posé au premier enregistrement.
+    if (!sheet.getRange(1, 9).getValue()) sheet.getRange(1, 9).setValue('Terrains').setFontWeight('bold');
     if (r.id) {
       var ligne = ligneRencontre_(r.id);
       if (!ligne) throw new Error('Rencontre introuvable. Rechargez le panneau.');
@@ -854,6 +861,7 @@ function lireRencontres_() {
         lieu: String(l[5]).trim(),
         statut: String(l[6]).trim() === 'Validée' ? 'Validée' : 'En attente',
         infos: String(l[7]).trim(),
+        terrains: TERRAINS.indexOf(String(l[8] == null ? '' : l[8]).trim()) !== -1 ? String(l[8]).trim() : '',
       };
     })
     .filter(function (r) { return r.date >= depuis && EQUIPES.indexOf(r.equipe) !== -1; })
