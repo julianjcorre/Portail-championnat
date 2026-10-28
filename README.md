@@ -43,6 +43,12 @@ Connexion :
 2. Si l'adresse est dans la liste, un mail part du compte du club avec un lien personnel (`…/exec?capitaine=<jeton>`). La page dit clairement si le mail est parti, si l'adresse n'est pas dans la liste ou si la limite est atteinte (10 mails maximum par adresse et par jour , seuls les envois réussis comptent).
 3. Ouvrir le lien sur son téléphone : la page s'ouvre sur les matchs (comme pour les joueurs) et le téléphone garde la connexion capitaine (1 an, ou jusqu'à « Se déconnecter »). L'espace capitaines s'ouvre ensuite avec le bouton **⚙️** en haut à droite (ou le lien en bas de page).
 
+Code capitaine (choisi par le capitaine) :
+- Après une connexion par le code du mail, la page propose « 🔑 Mon code capitaine » : 6 chiffres choisis par le capitaine (codes trop simples refusés : 000000, 123456…). Modifiable ensuite depuis l'accueil de l'espace capitaines.
+- Connexions suivantes (nouveau téléphone, après « Se déconnecter ») : adresse + code capitaine, sans mail.
+- Code oublié : « ✉️ Recevoir un code par mail », puis choisir un nouveau code. 5 erreurs de suite effacent le code capitaine : il faut repasser par le mail.
+- Stocké brouillé (SHA-256 avec un sel) dans les propriétés du script (`code_perso_<adresse>`), jamais en clair, ni dans la Sheet ni dans un mail.
+
 Appli sur l'écran d'accueil : bouton « 📲 Installer l'appli » en bas de la page (Android/ordinateur : installation directe ; iPhone : instructions Safari → Partager → Sur l'écran d'accueil). Fichiers `manifest.webmanifest`, `sw.js` et icônes dans le dépôt `tcbazogeais.github.io`. Sur iPhone, l'appli a sa propre mémoire : on y retape son prénom une fois, et les capitaines s'y connectent avec le **code à 6 chiffres** du mail (valable 30 min, 5 essais), puisque les liens des mails s'ouvrent dans Safari.
 
 Vignettes :

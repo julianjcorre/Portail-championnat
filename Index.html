@@ -71,7 +71,8 @@
       top: 0;
       z-index: 2;
     }
-    .titre { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .titre { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+    .titre h1 { flex: 1; }
     h1 { font-size: 19px; margin: 0; display: flex; align-items: center; gap: 10px; line-height: 1.2; }
     h1 .sous-titre { color: var(--jaune); }
     .logo { width: 48px; height: 48px; flex: none; border-radius: 50%; background: #fff; padding: 2px; }
@@ -81,6 +82,9 @@
       width: 42px; height: 42px; flex: none; border-radius: 50%; border: 2px solid var(--jaune);
       background: transparent; font-size: 20px; line-height: 1; cursor: pointer; padding: 0;
     }
+    .bouton-cap.actif { background: var(--jaune); }
+    /* Petit écran avec 👤 et ⚙️ : le nom passe sous le titre. */
+    @media (max-width: 480px) { header.cap-connecte .moi { order: 3; flex-basis: 100%; text-align: right; margin-top: -4px; } }
     .moi button {
       background: none; border: 0; color: inherit; text-decoration: underline;
       font: inherit; padding: 4px 0; cursor: pointer;
@@ -140,6 +144,12 @@
     .gros.second { background: var(--carte); color: var(--texte); border: 2px solid var(--ligne); }
     .gros:disabled { opacity: .6; }
     .lien { background: none; border: 0; color: var(--doux); text-decoration: underline; font: inherit; padding: 12px 0; cursor: pointer; }
+    .retour {
+      display: inline-flex; align-items: center; min-height: 44px; margin: 0 0 12px; padding: 0 16px 0 12px; border-radius: 999px;
+      border: 2px solid var(--ligne); background: var(--carte); color: var(--texte); font-weight: 700; font-size: 15px;
+      font-family: inherit; cursor: pointer;
+    }
+    .qui .retour { margin: 14px 0 0; }
     .vide, .chargement { text-align: center; color: var(--doux); padding: 40px 0; }
     .erreur {
       position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 3;
@@ -272,6 +282,8 @@
     }
     .partage a { background: #25d366; color: #0b2915; }
     .partage button { background: var(--carte); color: var(--texte); border: 2px solid var(--ligne); }
+    .secret { -webkit-text-security: disc; text-security: disc; letter-spacing: .2em; }
+    .ou { color: var(--doux); font-size: 15px; margin: 22px 0 0; text-align: center; }
     .info { background: var(--vert-clair); color: var(--vert); border-radius: 10px; padding: 10px 12px; font-weight: 600; margin: 12px 0; }
     [hidden] { display: none !important; }
   </style>
@@ -280,8 +292,9 @@
   <header>
     <div class="titre">
       <h1><img class="logo" alt="TCB" src="data:image/webp;base64,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"><span>TC Bazoges – <span class="sous-titre">Championnat</span></span></h1>
+      <div class="moi" id="moi" hidden></div>
       <div class="droite">
-        <div class="moi" id="moi" hidden></div>
+        <button class="bouton-cap" id="bouton-joueur" data-vue="matchs" title="Mes dispos (page des joueurs)" hidden>👤</button>
         <button class="bouton-cap" id="bouton-cap" data-vue="cap" title="Espace capitaines" hidden>⚙️</button>
       </div>
     </div>
@@ -297,7 +310,7 @@
     var URL_API = 'https://script.google.com/macros/s/AKfycbw6zkDi717zVCuxSCE4YUY7KYUMTSJroeg_sjgdOOa3m1MFUf7jbcJBKdRbhFOrDKZd5g/exec';
     var FONCTIONS_SERVEUR = ['getDonnees', 'repondre', 'inscrire', 'demanderLienCapitaine', 'infoCapitaine', 'deconnecterCapitaine',
       'getDonneesCapitaines', 'enregistrerRencontre', 'supprimerRencontre', 'renommerJoueur', 'supprimerJoueur',
-      'validerCodeCapitaine', 'definirSelection'];
+      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso'];
     var surAppsScript = !!(window.google && google.script && google.script.run);
 
     /** Même usage que google.script.run : serveur().withSuccessHandler(…).withFailureHandler(…).fonction(args). */
@@ -365,6 +378,7 @@
     var renommage = null;      // joueur en cours de renommage
     var capEmail = '';         // adresse saisie à la connexion capitaine
     var codeEnvoye = false;    // le mail avec le code est parti : afficher la saisie du code
+    var modeMail = false;      // connexion par code reçu par mail (1re fois ou code capitaine oublié)
     var selId = '';            // rencontre ouverte dans l'écran Sélection
     var selEnCours = 0;        // enregistrements de sélection en attente de réponse
     var invitationInstall = null; // évènement beforeinstallprompt (Android / ordinateur)
@@ -462,7 +476,12 @@
       var zoneMoi = document.getElementById('moi');
 
       if (!donnees) return;
-      document.getElementById('bouton-cap').hidden = !capitaine || vue !== 'matchs';
+      // Capitaine connecté : 👤 (ses propres dispos) et ⚙️ (espace capitaines) toujours en haut à droite.
+      var boutonJoueur = document.getElementById('bouton-joueur'), boutonCap = document.getElementById('bouton-cap');
+      boutonJoueur.hidden = boutonCap.hidden = !capitaine;
+      document.querySelector('header').classList.toggle('cap-connecte', !!capitaine);
+      boutonJoueur.classList.toggle('actif', vue === 'matchs');
+      boutonCap.classList.toggle('actif', vue.indexOf('cap') === 0);
       var champ = document.getElementById('champ-nom');
       if (champ && !inscription.choixGroupe) inscription.nom = champ.value;
       if (vue === 'cap-form') lireBrouillon();
@@ -518,7 +537,7 @@
         html += '<button class="gros second" data-groupe="' + esc(g) + '"' +
           (inscription.envoi ? ' disabled' : '') + '>' + esc(g) + '</button>';
       });
-      return html + '<button class="lien" id="corriger-nom">← Corriger mon nom</button></div>';
+      return html + '<button class="retour" id="corriger-nom">← Corriger mon nom</button></div>';
     }
 
     function piedCapitaines() {
@@ -555,7 +574,7 @@
 
     function ecranInstaller() {
       var iphone = surIphone(), nav = navigateur();
-      return '<div class="cap"><button class="lien" data-vue="matchs">← Retour aux matchs</button>' +
+      return '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button>' +
         '<h2>📲 Installer l\'appli</h2><p class="sous">L\'icône du club apparaîtra sur ton téléphone, comme une vraie appli.</p>' +
         (invitationInstall ? '<button class="gros" id="installer-direct" style="margin:0 0 16px">📲 Installer maintenant</button>' +
           '<p class="sous">Si rien ne se passe ou si l\'icône n\'apparaît pas, suis les étapes ci-dessous.</p>' : '') +
@@ -573,7 +592,7 @@
           '<li>Appui long sur l\'icône <b>' + nav + '</b> → <b>ⓘ Infos sur l\'application</b>.</li>' +
           '<li><b>Autres autorisations</b> → <b>Raccourcis sur l\'écran d\'accueil</b> → <b>Accepter</b>.</li>' +
           '<li>Reviens ici et recommence l\'installation (menu ⋮ → Ajouter à l\'écran d\'accueil).</li></ol></div>') +
-        '<p class="sous">Capitaine ? Dans l\'appli, ⚙️ Espace capitaines → ton adresse → tape le <b>code reçu par mail</b>.</p></div>';
+        '<p class="sous">Capitaine ? Dans l\'appli, ⚙️ Espace capitaines → ton adresse → ton <b>code capitaine</b> (la 1re fois : code reçu par mail).</p></div>';
     }
 
     window.addEventListener('beforeinstallprompt', function (e) {
@@ -770,8 +789,9 @@
       if (vue === 'cap-tableau') return ecranTableau();
       if (vue === 'cap-selection') return selId ? ecranSelectionMatch() : ecranSelection();
       if (vue === 'cap-joueurs') return ecranJoueurs();
+      if (vue === 'cap-code') return ecranCodePerso();
       var nbAttente = donnees.rencontres.filter(function (r) { return r.statut !== 'Validée'; }).length;
-      return '<div class="cap"><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
+      return '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
         '<div class="tuiles">' +
           tuile('cap-form', '➕', 'Créer une rencontre', 'Date, adversaire, lieu…', true) +
@@ -783,6 +803,7 @@
           tuile('matchs', '🎾', 'Page des joueurs', 'Revenir aux matchs') +
           (appliInstallee() ? '' : tuile('installer', '📲', 'Installer l\'appli', 'Icône sur ton téléphone')) +
         '</div>' +
+        '<p class="pied"><button data-vue="cap-code">🔑 Choisir ou changer mon code capitaine</button></p>' +
         '<p class="pied"><button id="deconnexion-cap">Se déconnecter de l\'espace capitaines</button></p></div>';
     }
 
@@ -791,31 +812,53 @@
         '<span class="icone">' + icone + '</span><span><b>' + esc(titre) + '</b><small>' + esc(detail) + '</small></span></button>';
     }
 
-    function enTeteCap(titre) {
-      return '<div class="cap"><button class="lien" data-vue="cap">← Espace capitaines</button><h2>' + esc(titre) + '</h2>' +
+    function enTeteCap(titre, retourVue, retourTexte) {
+      return '<div class="cap"><button class="retour" data-vue="' + (retourVue || 'cap') + '">← ' + esc(retourTexte || 'Espace capitaines') + '</button>' +
+        '<h2>' + esc(titre) + '</h2>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '');
     }
 
     function ecranConnexionCap() {
-      return '<div class="cap"><button class="lien" data-vue="matchs">← Retour aux matchs</button>' +
+      var html = '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button>' +
         '<h2>⚙️ Espace capitaines</h2>' +
-        '<p class="sous">Réservé aux capitaines. Tape ton adresse : tu recevras un code de connexion par mail. ' +
-        'Ton téléphone s\'en souviendra ensuite.</p>' +
+        '<p class="sous">' + (modeMail
+          ? 'Première connexion ou code oublié : tu reçois un code par mail, puis tu choisis ton code capitaine.'
+          : 'Réservé aux capitaines. Tape ton adresse et ton code capitaine. Ton téléphone s\'en souviendra ensuite.') + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
-        '<form id="form-cap-connexion"><div class="champ"><label for="cap-email">Ton adresse e-mail</label>' +
-        '<input id="cap-email" type="email" autocomplete="email" placeholder="prenom.nom@gmail.com" required value="' + esc(capEmail) + '"></div>' +
+        '<div class="champ"><label for="cap-email">Ton adresse e-mail</label>' +
+        '<input id="cap-email" type="email" autocomplete="email" placeholder="prenom.nom@gmail.com" value="' + esc(capEmail) + '"></div>';
+      if (!modeMail) {
+        return html + '<form id="form-cap-perso"><div class="champ"><label for="cap-perso">Ton code capitaine (6 chiffres)</label>' +
+          '<input id="cap-perso" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="••••••"></div>' +
+          '<button class="gros" type="submit">Me connecter</button></form>' +
+          '<p class="ou">Première connexion ou code oublié ?</p>' +
+          '<button class="gros second" id="mode-mail">✉️ Recevoir un code par mail</button></div>';
+      }
+      return html + '<form id="form-cap-connexion">' +
         '<button class="gros' + (codeEnvoye ? ' second' : '') + '" type="submit">' + (codeEnvoye ? 'Renvoyer un mail' : 'Recevoir mon code par mail') + '</button></form>' +
         (codeEnvoye
           ? '<form id="form-cap-code" style="margin-top:18px"><div class="champ"><label for="cap-code">Code à 6 chiffres reçu par mail</label>' +
             '<input id="cap-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required></div>' +
             '<button class="gros" type="submit">Me connecter</button></form>'
-          : '<button class="lien" id="deja-code">J\'ai déjà reçu un code</button>') +
-        '</div>';
+          : '<button class="lien" id="deja-code">J\'ai déjà reçu un code par mail</button>') +
+        '<p class="ou"><button class="lien" id="mode-perso">J\'ai déjà mon code capitaine</button></p></div>';
+    }
+
+    function ecranCodePerso() {
+      return enTeteCap('🔑 Mon code capitaine') +
+        '<p class="sous">Choisis 6 chiffres. La prochaine fois (nouveau téléphone, après une déconnexion), ' +
+        'tu taperas ton adresse et ce code, sans attendre de mail. Garde-le pour toi.</p>' +
+        '<form id="form-code-perso"><div class="champ"><label for="code-perso-1">Ton nouveau code (6 chiffres)</label>' +
+        '<input id="code-perso-1" class="secret" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="••••••"></div>' +
+        '<div class="champ"><label for="code-perso-2">Tape-le une 2e fois</label>' +
+        '<input id="code-perso-2" class="secret" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="••••••"></div>' +
+        '<button class="gros" type="submit">Enregistrer mon code</button></form>' +
+        '<button class="gros second" data-vue="cap">Plus tard</button></div>';
     }
 
     function ecranFormRencontre() {
       var b = brouillon;
-      var html = enTeteCap(edition ? 'Modifier la rencontre' : 'Créer une rencontre') +
+      var html = (edition ? enTeteCap('Modifier la rencontre', 'cap-gerer', 'Gérer les rencontres') : enTeteCap('Créer une rencontre')) +
         '<form id="form-rencontre">' +
         '<div class="deux"><div class="champ"><label for="r-date">Date</label><input id="r-date" type="date" required value="' + esc(b.date) + '"></div>' +
         '<div class="champ"><label for="r-heure">Heure</label><input id="r-heure" placeholder="9h, 14h30" value="' + esc(b.heure) + '"></div></div>' +
@@ -1015,7 +1058,7 @@
       if (!r) { selId = ''; return ecranSelection(); }
       var sel = selectionDe(r.id);
       var autresDuJour = donnees.rencontres.filter(function (x) { return x.date === r.date && x.id !== r.id; });
-      var html = '<div class="cap"><button class="lien" id="retour-selection">← Tous les matchs</button>' +
+      var html = '<div class="cap"><button class="retour" id="retour-selection">← Tous les matchs</button>' +
         '<h2>' + titreMatch(r) + '</h2>' +
         '<p class="sous">' + esc(dateLongue(r.date)) + ' · ' + esc(r.heure || 'heure à venir') + ' · ' +
         (r.lieu === 'Domicile' ? '🏠 Domicile' : r.lieu === 'Extérieur' ? '🚗 Extérieur' : 'lieu à venir') +
@@ -1111,14 +1154,50 @@
         .definirSelection(jeton, id, nom, role);
     }
 
-    function allerA(nouvelleVue) {
-      if (nouvelleVue !== 'cap-selection') selId = '';
+    // --- Historique : le bouton retour du téléphone revient à l'écran précédent au lieu de quitter ---
+    // pile[i] = écran de l'entrée i de l'historique ; pos = entrée affichée.
+    // (Sur Apps Script la page est dans un cadre : on laisse l'historique tel quel.)
+    var pile = [{ vue: 'matchs', sel: '' }], pos = 0;
+    var garderMessage = false; // message à afficher après un retour en arrière (ex. « Rencontre modifiée »)
+    if (!surAppsScript) {
+      try { history.replaceState({ i: 0, vue: 'matchs', sel: '' }, ''); } catch (e) {}
+      window.addEventListener('popstate', function (e) {
+        var etat = e.state && typeof e.state.i === 'number' ? e.state : { i: 0, vue: 'matchs', sel: '' };
+        pos = etat.i;
+        pile[pos] = { vue: etat.vue, sel: etat.sel || '' };
+        afficherEcran(pile[pos]);
+      });
+    }
+
+    function afficherEcran(etat) {
+      selId = etat.vue === 'cap-selection' ? etat.sel : '';
       renommage = null;
-      if (nouvelleVue !== vue) messageCap = '';
-      vue = nouvelleVue;
-      rendre();
+      if (etat.vue !== vue && !garderMessage) messageCap = '';
+      garderMessage = false;
+      vue = etat.vue;
+      if (donnees) rendre();
       window.scrollTo(0, 0);
     }
+
+    /** Va à un écran : revient en arrière s'il est déjà dans l'historique, sinon ajoute une entrée. */
+    function naviguer(etat, avecMessage) {
+      etat = { vue: etat.vue, sel: etat.sel || '' };
+      garderMessage = !!avecMessage;
+      if (surAppsScript) { afficherEcran(etat); return; }
+      for (var i = pos; i >= 0; i--) {
+        if (pile[i] && pile[i].vue === etat.vue && pile[i].sel === etat.sel) {
+          if (i === pos) afficherEcran(etat); else history.go(i - pos); // popstate affichera l'écran
+          return;
+        }
+      }
+      pile = pile.slice(0, pos + 1);
+      pile.push(etat);
+      pos++;
+      try { history.pushState({ i: pos, vue: etat.vue, sel: etat.sel }, ''); } catch (e) {}
+      afficherEcran(etat);
+    }
+
+    function allerA(nouvelleVue, avecMessage) { naviguer({ vue: nouvelleVue }, avecMessage); }
 
     function appelCap(fonction, args, succes) {
       var boutons = document.querySelectorAll('#contenu button');
@@ -1183,7 +1262,7 @@
         var supprimee = edition;
         appelCap('supprimerRencontre', [supprimee.id], function () {
           messageCap = 'Rencontre du ' + dateDansPhrase(supprimee.date) + ' supprimée.';
-          vue = 'cap-gerer';
+          allerA('cap-gerer', true);
         });
       } else if (cible.hasAttribute('data-agenda')) {
         telechargerAgenda(cible.getAttribute('data-agenda'));
@@ -1191,17 +1270,19 @@
         installer();
       } else if (cible.id === 'installer-direct') {
         installerMaintenant();
+      } else if (cible.id === 'mode-mail' || cible.id === 'mode-perso') {
+        capEmail = (document.getElementById('cap-email') || {}).value || capEmail;
+        modeMail = cible.id === 'mode-mail';
+        messageCap = '';
+        rendre();
       } else if (cible.id === 'deja-code') {
         capEmail = (document.getElementById('cap-email') || {}).value || capEmail;
         codeEnvoye = true;
         rendre();
       } else if (cible.hasAttribute('data-sel')) {
-        selId = cible.getAttribute('data-sel');
-        rendre();
-        window.scrollTo(0, 0);
+        naviguer({ vue: 'cap-selection', sel: cible.getAttribute('data-sel') });
       } else if (cible.id === 'retour-selection') {
-        selId = '';
-        rendre();
+        naviguer({ vue: 'cap-selection' });
       } else if (cible.hasAttribute('data-role')) {
         definirRole(cible.getAttribute('data-joueur'), cible.getAttribute('data-role'));
       } else if (cible.id === 'copier-compo') {
@@ -1234,6 +1315,7 @@
       } else if (cible.id === 'deconnexion-cap') {
         serveur().deconnecterCapitaine(jeton);
         deconnexionCap();
+        modeMail = false;
         allerA('matchs');
       } else if (cible.hasAttribute('data-groupe')) {
         inscrire(cible.getAttribute('data-groupe'));
@@ -1254,6 +1336,7 @@
       if (e.target.id === 'form-cap-connexion') {
         e.preventDefault();
         var email = document.getElementById('cap-email').value.trim();
+        if (!email) { afficherErreur('Tape ton adresse e-mail.'); return; }
         var bouton = e.target.querySelector('button');
         bouton.disabled = true;
         capEmail = email;
@@ -1271,17 +1354,59 @@
         b2.disabled = true;
         serveur()
           .withSuccessHandler(function (r) {
-            jeton = r.jeton;
-            ecrireJeton(jeton);
             codeEnvoye = false;
-            messageCap = '';
-            serveur()
-              .withSuccessHandler(function (info) { capitaine = info.email; allerA('cap'); })
-              .withFailureHandler(function (err) { afficherErreur(err.message); })
-              .infoCapitaine(jeton);
+            modeMail = false;
+            // Connecté grâce au mail : on propose tout de suite de choisir son code capitaine.
+            connecterCapitaine(r.jeton, 'cap-code');
           })
           .withFailureHandler(function (err) { b2.disabled = false; afficherErreur(err && err.message ? err.message : 'Code refusé.'); })
           .validerCodeCapitaine(email2, code);
+        return;
+      }
+      if (e.target.id === 'form-cap-perso') {
+        e.preventDefault();
+        var email3 = document.getElementById('cap-email').value.trim();
+        var perso = document.getElementById('cap-perso').value;
+        if (!email3) { afficherErreur('Tape ton adresse e-mail.'); return; }
+        var b3 = e.target.querySelector('button');
+        b3.disabled = true;
+        capEmail = email3;
+        serveur()
+          .withSuccessHandler(function (r) { connecterCapitaine(r.jeton, 'cap'); })
+          .withFailureHandler(function (err) {
+            b3.disabled = false;
+            var msg = err && err.message ? err.message : 'Connexion impossible.';
+            if (/^PAS_DE_CODE: /.test(msg)) {
+              // Pas (ou plus) de code capitaine : on bascule sur la connexion par mail.
+              modeMail = true;
+              messageCap = msg.replace(/^PAS_DE_CODE: /, '');
+              rendre();
+            } else {
+              afficherErreur(msg);
+            }
+          })
+          .connexionCodePerso(email3, perso);
+        return;
+      }
+      if (e.target.id === 'form-code-perso') {
+        e.preventDefault();
+        var c1 = document.getElementById('code-perso-1').value, c2 = document.getElementById('code-perso-2').value;
+        if (!/^\d{6}$/.test(c1)) { afficherErreur('Le code doit faire 6 chiffres.'); return; }
+        if (c1 !== c2) { afficherErreur('Les deux codes ne sont pas pareils : retape-les.'); return; }
+        var b4 = e.target.querySelector('button');
+        b4.disabled = true;
+        serveur()
+          .withSuccessHandler(function () {
+            messageCap = 'Code capitaine enregistré. La prochaine fois, tape ton adresse et ce code.';
+            allerA('cap', true);
+          })
+          .withFailureHandler(function (err) {
+            b4.disabled = false;
+            var msg = err && err.message ? err.message : 'Enregistrement impossible.';
+            if (/expirée/.test(msg)) deconnexionCap();
+            afficherErreur(msg);
+          })
+          .definirCodePerso(jeton, c1);
         return;
       }
       if (e.target.id === 'form-renommer') {
@@ -1303,7 +1428,7 @@
         appelCap('enregistrerRencontre', [r], function () {
           messageCap = (etaitEdition ? 'Rencontre modifiée : ' : 'Rencontre créée : ') + r.equipe + ' – ' + (r.adversaire || 'adversaire à venir') + ', ' + dateDansPhrase(r.date) + '.';
           edition = null;
-          vue = etaitEdition ? 'cap-gerer' : 'cap';
+          allerA(etaitEdition ? 'cap-gerer' : 'cap', true);
         });
         return;
       }
@@ -1317,6 +1442,17 @@
       else if (donnees.groupes.length === 1) inscrire(donnees.groupes[0]); // une seule équipe : pas de question
       else { inscription.choixGroupe = true; rendre(); }
     });
+
+    /** Garde le jeton capitaine sur le téléphone puis ouvre l'écran demandé. */
+    function connecterCapitaine(nouveauJeton, ecran) {
+      jeton = nouveauJeton;
+      ecrireJeton(jeton);
+      messageCap = '';
+      serveur()
+        .withSuccessHandler(function (info) { capitaine = info.email; allerA(ecran); })
+        .withFailureHandler(function (err) { afficherErreur(err.message); })
+        .infoCapitaine(jeton);
+    }
 
     function connecter(nom) {
       moi = nom;

@@ -397,8 +397,7 @@ function demanderLienCapitaine(adresse) {
     throw new Error('Trop de demandes aujourd\'hui pour ' + email + '. Utilise le dernier mail reçu ou réessaie demain.');
   }
 
-  var jeton = Utilities.getUuid();
-  props.setProperty('jeton_' + jeton, JSON.stringify({ email: email, expire: Date.now() + DUREE_JETON_JOURS * 86400000 }));
+  var jeton = creerJeton_(email);
   var lien = (URL_PAGE || ScriptApp.getService().getUrl()) + '?capitaine=' + jeton;
   var heure = Utilities.formatDate(maintenant, 'Europe/Paris', 'dd/MM HH:mm');
   // Code à taper dans l'appli installée (valable 30 minutes).
@@ -421,6 +420,13 @@ function demanderLienCapitaine(adresse) {
     'Il arrive en 1 à 2 minutes ; regarde aussi Spam et Promotions. Tape le code du mail ci-dessous, ou ouvre son lien.';
 }
 
+function creerJeton_(email) {
+  var jeton = Utilities.getUuid();
+  PropertiesService.getScriptProperties()
+    .setProperty('jeton_' + jeton, JSON.stringify({ email: email, expire: Date.now() + DUREE_JETON_JOURS * 86400000 }));
+  return jeton;
+}
+
 /**
  * Connexion par code (appli installée sur l'écran d'accueil : les liens des mails
  * s'ouvrent dans le navigateur, pas dans l'appli). Renvoie { jeton }.
@@ -440,6 +446,60 @@ function validerCodeCapitaine(adresse, code) {
   props.deleteProperty('code_' + email);
   verifierCapitaine_(info.jeton);
   return { jeton: info.jeton };
+}
+
+// Code capitaine choisi par le capitaine (6 chiffres), après une 1re connexion par mail.
+// Gardé brouillé (SHA-256 + sel) dans les propriétés du script, jamais en clair.
+// 5 erreurs de suite : le code est effacé, il faut repasser par le mail.
+var MAX_ESSAIS_CODE_PERSO = 5;
+
+function brouillerCode_(sel, code) {
+  return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, sel + ':' + code, Utilities.Charset.UTF_8));
+}
+
+/** Enregistre (ou remplace) le code capitaine du capitaine connecté. */
+function definirCodePerso(jeton, code) {
+  var email = verifierCapitaine_(jeton);
+  code = String(code || '');
+  if (!/^\d{6}$/.test(code)) throw new Error('Le code doit faire 6 chiffres.');
+  if (/^(\d)\1{5}$/.test(code) || code === '123456' || code === '654321') {
+    throw new Error('Code trop facile à deviner : choisis-en un autre.');
+  }
+  var sel = Utilities.getUuid();
+  PropertiesService.getScriptProperties()
+    .setProperty('code_perso_' + email, JSON.stringify({ sel: sel, empreinte: brouillerCode_(sel, code), essais: 0 }));
+  return 'Code capitaine enregistré.';
+}
+
+/** Connexion avec l'adresse et le code capitaine choisi. Renvoie { jeton }. */
+function connexionCodePerso(adresse, code) {
+  var email = String(adresse || '').trim().toLowerCase();
+  if (!email) throw new Error('Tape ton adresse e-mail.');
+  if (adressesCapitaines_().indexOf(email) === -1) {
+    throw new Error('L\'adresse ' + email + ' n\'est pas dans la liste des capitaines. Vérifie l\'orthographe.');
+  }
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var brut = props.getProperty('code_perso_' + email);
+    if (!brut) throw new Error('PAS_DE_CODE: Pas encore de code capitaine pour cette adresse : reçois d\'abord un code par mail.');
+    var info = JSON.parse(brut);
+    if (brouillerCode_(info.sel, String(code || '').replace(/\D/g, '')) !== info.empreinte) {
+      info.essais++;
+      if (info.essais >= MAX_ESSAIS_CODE_PERSO) {
+        props.deleteProperty('code_perso_' + email);
+        throw new Error('PAS_DE_CODE: Trop d\'erreurs : ton code capitaine est effacé. Reçois un code par mail pour en choisir un nouveau.');
+      }
+      props.setProperty('code_perso_' + email, JSON.stringify(info));
+      var reste = MAX_ESSAIS_CODE_PERSO - info.essais;
+      throw new Error('Code incorrect. Encore ' + reste + ' essai' + (reste > 1 ? 's' : '') + ' avant de devoir repasser par le mail.');
+    }
+    if (info.essais) { info.essais = 0; props.setProperty('code_perso_' + email, JSON.stringify(info)); }
+  } finally {
+    verrou.releaseLock();
+  }
+  return { jeton: creerJeton_(email) };
 }
 
 /** 'N°1' … 'N°<NB_POSITIONS>' ou 'Remplaçant'. */
@@ -684,6 +744,8 @@ function doPost(e) {
     renommerJoueur: renommerJoueur,
     supprimerJoueur: supprimerJoueur,
     validerCodeCapitaine: validerCodeCapitaine,
+    definirCodePerso: definirCodePerso,
+    connexionCodePerso: connexionCodePerso,
     definirSelection: definirSelection,
   };
   var sortie;
