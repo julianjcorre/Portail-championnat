@@ -236,6 +236,11 @@
     .pastille { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 1px 8px; margin-left: 4px; }
     .pastille.manque { background: var(--orange-clair); color: var(--orange); }
     .pastille.complet { background: var(--vert-clair); color: var(--vert); }
+    .clt { display: inline-block; font-size: 13px; font-weight: 700; border-radius: 6px; padding: 0 6px; margin-left: 6px; background: var(--fond); color: var(--texte); border: 1px solid var(--ligne); vertical-align: 1px; }
+    .joueur select {
+      min-height: 40px; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte); color: var(--texte);
+      font-size: 16px; font-weight: 700; font-family: inherit; padding: 0 6px;
+    }
     .renommer { display: flex; gap: 6px; width: 100%; }
     .renommer input { flex: 1; min-height: 42px; border-radius: 10px; border: 2px solid var(--jaune-fonce); padding: 0 10px; font-size: 16px; font-family: inherit; background: var(--carte); color: var(--texte); }
     .renommer button { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 0; background: var(--jaune); color: #151515; font-weight: 700; font-family: inherit; cursor: pointer; }
@@ -310,7 +315,7 @@
     var URL_API = 'https://script.google.com/macros/s/AKfycbw6zkDi717zVCuxSCE4YUY7KYUMTSJroeg_sjgdOOa3m1MFUf7jbcJBKdRbhFOrDKZd5g/exec';
     var FONCTIONS_SERVEUR = ['getDonnees', 'repondre', 'inscrire', 'demanderLienCapitaine', 'infoCapitaine', 'deconnecterCapitaine',
       'getDonneesCapitaines', 'enregistrerRencontre', 'supprimerRencontre', 'renommerJoueur', 'supprimerJoueur',
-      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso'];
+      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement'];
     var surAppsScript = !!(window.google && google.script && google.script.run);
 
     /** Même usage que google.script.run : serveur().withSuccessHandler(…).withFailureHandler(…).fonction(args). */
@@ -790,6 +795,7 @@
       if (vue === 'cap-selection') return selId ? ecranSelectionMatch() : ecranSelection();
       if (vue === 'cap-joueurs') return ecranJoueurs();
       if (vue === 'cap-code') return ecranCodePerso();
+      if (vue === 'cap-classements') return ecranClassements();
       var nbAttente = donnees.rencontres.filter(function (r) { return r.statut !== 'Validée'; }).length;
       return '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
@@ -799,6 +805,7 @@
           tuile('cap-selection', '🏆', 'Sélection', 'Composer les équipes, envoyer sur WhatsApp') +
           tuile('cap-tableau', '📊', 'Tableau des dispos', 'Vue globale joueurs × matchs') +
           tuile('cap-dispos', '👥', 'Dispos par match', 'Qui vient à chaque match') +
+          tuile('cap-classements', '🎾', 'Classements', classementsAVerifier() ? classementsAVerifier() + ' à vérifier' : 'Tous vérifiés ce mois-ci') +
           tuile('cap-joueurs', '👤', 'Joueurs', sansReponseTotal() ? sansReponseTotal() + ' sans réponse à tout' : 'Renommer, supprimer') +
           tuile('matchs', '🎾', 'Page des joueurs', 'Revenir aux matchs') +
           (appliInstallee() ? '' : tuile('installer', '📲', 'Installer l\'appli', 'Icône sur ton téléphone')) +
@@ -1029,6 +1036,66 @@
       return html + '</div>';
     }
 
+    // ======================= Classements =======================
+    // Saisis par les capitaines. Les classements FFT peuvent changer chaque mois :
+    // au-delà de JOURS_CLASSEMENT jours sans vérification, le classement est « à vérifier ».
+    var JOURS_CLASSEMENT = 31;
+
+    function rangClassement(j) { return (donnees.classements || []).indexOf(j.classement || ''); }
+    function classementPerime(j) {
+      if (!j.classement || !j.classementLe) return true;
+      return (Date.now() - new Date(j.classementLe + 'T12:00:00')) / 86400000 > JOURS_CLASSEMENT;
+    }
+    function classementsAVerifier() { return donnees.joueurs.filter(classementPerime).length; }
+    function pastilleClassement(j) { return j.classement ? '<span class="clt">' + esc(j.classement) + '</span>' : ''; }
+    /** Meilleur classement d'abord, puis non classés ; à égalité, ordre alphabétique. */
+    function parClassement(a, b) { return rangClassement(b) - rangClassement(a) || a.nom.localeCompare(b.nom, 'fr'); }
+
+    function ecranClassements() {
+      var html = enTeteCap('🎾 Classements');
+      if (!donnees.classements) return html + '<div class="vide">Mise à jour en cours : recharge la page dans une minute.</div></div>';
+      var n = classementsAVerifier();
+      html += '<p class="sous">Les classements FFT peuvent changer chaque mois. Choisis le classement de chaque joueur, ' +
+        'ou touche <b>✓ Bon</b> s\'il n\'a pas changé.' + (n ? ' <b>' + n + ' à vérifier.</b>' : ' Tout est à jour.') + '</p>';
+      html += '<div class="carte">' + donnees.joueurs.map(function (j) {
+        var perime = classementPerime(j);
+        var detail = !j.classement ? '<span class="pastille manque">pas de classement</span>'
+          : 'vérifié le ' + esc(dateCourte(j.classementLe)) + (perime ? ' <span class="pastille manque">à vérifier</span>' : '');
+        return '<div class="joueur"><div class="qui-j"><b>' + esc(j.nom) + '</b><small>' + detail + '</small></div>' +
+          '<div class="actions-j"><select aria-label="Classement de ' + esc(j.nom) + '" data-classement-joueur="' + esc(j.nom) + '">' +
+          '<option value="">—</option>' + donnees.classements.slice().reverse().map(function (c) {
+            return '<option' + (c === j.classement ? ' selected' : '') + '>' + esc(c) + '</option>';
+          }).join('') + '</select>' +
+          (j.classement && perime ? '<button data-toujours-bon="' + esc(j.nom) + '">✓ Bon</button>' : '') + '</div></div>';
+      }).join('') + '</div>';
+      return html + '</div>';
+    }
+
+    function dateCourte(iso) {
+      if (!iso) return '';
+      return new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    }
+
+    function definirClassement(nom, classement) {
+      var j = joueur(nom);
+      if (!j) return;
+      var avant = { classement: j.classement, classementLe: j.classementLe };
+      j.classement = classement;
+      j.classementLe = classement ? new Date().toISOString().slice(0, 10) : '';
+      rendre();
+      serveur()
+        .withSuccessHandler(function (r) { j.classement = r.classement; j.classementLe = r.classementLe; })
+        .withFailureHandler(function (err) {
+          j.classement = avant.classement;
+          j.classementLe = avant.classementLe;
+          rendre();
+          var msg = err && err.message ? err.message : 'problème de connexion';
+          if (/expirée/.test(msg)) deconnexionCap();
+          afficherErreur('Classement non enregistré : ' + msg);
+        })
+        .definirClassement(jeton, nom, classement);
+    }
+
     // ======================= Sélection =======================
 
     function selectionDe(id) { return (donnees.selection || {})[id] || {}; }
@@ -1070,19 +1137,19 @@
       html += '<div class="carte"><p class="groupe-titre" style="margin-top:0">🏆 Ordre de jeu des simples</p><div class="positions">' +
         pos.map(function (k) {
           var nom = occupant['N°' + k];
-          return '<span class="num">n°' + k + '</span>' + (nom ? '<span>' + esc(nom) + '</span>' : '<span class="libre">à choisir</span>');
+          return '<span class="num">n°' + k + '</span>' + (nom ? '<span>' + esc(nom) + (joueur(nom) ? pastilleClassement(joueur(nom)) : '') + '</span>' : '<span class="libre">à choisir</span>');
         }).join('') +
         (nomsRole(r.id, 'Remplaçant').length ? '<span class="num">🔄</span><span>' + esc(nomsRole(r.id, 'Remplaçant').join(', ')) + '</span>' : '') +
         '</div></div>';
       var groupes = [['Présent', '✅ Dispos'], ['', '… Pas encore répondu'], ['Absent', '❌ Pas dispos']];
       var joueurs = joueursEquipe(r.equipe);
       html += groupes.map(function (g) {
-        var js = joueurs.filter(function (j) { return reponseDe(r.id, j.nom) === g[0]; });
+        var js = joueurs.filter(function (j) { return reponseDe(r.id, j.nom) === g[0]; }).sort(parClassement);
         if (!js.length) return '';
         return '<p class="groupe-titre">' + g[1] + ' (' + js.length + ')</p><div class="carte">' + js.map(function (j) {
           var role = sel[j.nom] || '';
           var ailleurs = autresDuJour.filter(function (x) { return selectionDe(x.id)[j.nom]; })[0];
-          return '<div class="sel-joueur"><div class="tete"><b>' + esc(j.nom) + '</b>' +
+          return '<div class="sel-joueur"><div class="tete"><b>' + esc(j.nom) + pastilleClassement(j) + '</b>' +
             (ailleurs ? '<span class="avert">⚠️ déjà retenu en ' + esc(ailleurs.equipe) + '</span>' : '') + '</div>' +
             '<div class="choix">' + pos.map(function (k) { return ['N°' + k, 'n°' + k]; }).concat([['Remplaçant', '🔄 Remp.'], ['', '—']]).map(function (c) {
               return '<button type="button" data-role="' + c[0] + '" data-joueur="' + esc(j.nom) + '"' + (role === c[0] ? ' class="choisi"' : '') + '>' + c[1] + '</button>';
@@ -1102,7 +1169,7 @@
         '📅 ' + dateLongue(r.date) + (r.heure ? ' · ' + r.heure : '') +
         (r.lieu === 'Domicile' ? ' · 🏠 Domicile' : r.lieu === 'Extérieur' ? ' · 🚗 Extérieur' : '') +
         (r.terrains ? ' · 🎾 ' + r.terrains + ' terrain' + (r.terrains === '2' ? 's' : '') : '') + '\n' +
-        '🏆 Ordre de jeu (simples) :' + (t.length ? '\n' + t.map(function (x) { return (chiffres[x.n] || '•') + ' ' + x.nom; }).join('\n') : ' à venir') + '\n' +
+        '🏆 Ordre de jeu (simples) :' + (t.length ? '\n' + t.map(function (x) { return (chiffres[x.n] || '•') + ' ' + x.nom + (joueur(x.nom) && joueur(x.nom).classement ? ' (' + joueur(x.nom).classement + ')' : ''); }).join('\n') : ' à venir') + '\n' +
         (rp.length ? '🔄 Remplaçant' + (rp.length > 1 ? 's' : '') + ' : ' + rp.join(', ') + '\n' : '') +
         (r.infos ? 'ℹ️ ' + r.infos + '\n' : '') +
         '👉 ' + (surAppsScript ? URL_API : location.origin + location.pathname);
@@ -1297,6 +1364,9 @@
       } else if (cible.hasAttribute('data-filtre-jour')) {
         filtreJour = cible.getAttribute('data-filtre-jour');
         rendre();
+      } else if (cible.hasAttribute('data-toujours-bon')) {
+        var jb = joueur(cible.getAttribute('data-toujours-bon'));
+        if (jb) definirClassement(jb.nom, jb.classement);
       } else if (cible.hasAttribute('data-renommer')) {
         renommage = cible.getAttribute('data-renommer');
         rendre();
@@ -1330,6 +1400,10 @@
       } else if (cible.hasAttribute('data-rep')) {
         repondre(cible.getAttribute('data-id'), cible.getAttribute('data-rep'));
       }
+    });
+
+    document.addEventListener('change', function (e) {
+      if (e.target.hasAttribute('data-classement-joueur')) definirClassement(e.target.getAttribute('data-classement-joueur'), e.target.value);
     });
 
     document.addEventListener('submit', function (e) {

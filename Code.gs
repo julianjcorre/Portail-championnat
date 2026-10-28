@@ -44,7 +44,7 @@ var ONGLET_REPONSES = 'Réponses';
 var ONGLET_SELECTION = 'Sélection';
 
 var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos', 'Terrains'];
-var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le'];
+var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le', 'Classement', 'Classement vérifié le'];
 var ENTETES_REPONSES = ['ID rencontre', 'Nom', 'Réponse', 'Répondu le'];
 var ENTETES_SELECTION = ['ID rencontre', 'Nom', 'Rôle', 'Modifié le'];
 
@@ -52,6 +52,9 @@ var LIEUX = ['Domicile', 'Extérieur'];
 var TERRAINS = ['1', '2'];
 var STATUTS = ['Validée', 'En attente'];
 var REPONSES = ['Présent', 'Absent'];
+// Classements FFT, du plus faible au meilleur (ordre utilisé pour trier les joueurs).
+var CLASSEMENTS = ['NC', '40', '30/5', '30/4', '30/3', '30/2', '30/1', '30', '15/5', '15/4', '15/3', '15/2', '15/1', '15',
+  '5/6', '4/6', '3/6', '2/6', '1/6', '0', '-2/6', '-4/6', '-15', '-30'];
 // Nombre de positions de jeu (n°1, n°2…) dans la sélection d'une équipe.
 var NB_POSITIONS = 4;
 
@@ -502,6 +505,47 @@ function connexionCodePerso(adresse, code) {
   return { jeton: creerJeton_(email) };
 }
 
+/**
+ * Classement d'une case de la Sheet. Une saisie à la main comme « 15/4 » a pu être
+ * transformée en date (15 avril) par la Sheet : on la remet en « 15/4 ».
+ */
+function lireClassement_(valeur, tz) {
+  var texte = valeur instanceof Date ? Utilities.formatDate(valeur, tz, 'd/M') : String(valeur === undefined ? '' : valeur).trim();
+  return CLASSEMENTS.indexOf(texte) !== -1 ? texte : '';
+}
+
+/**
+ * Classement d'un joueur, saisi par un capitaine ('' pour l'effacer).
+ * Remet aussi la date de vérification à aujourd'hui (même classement = « toujours bon »).
+ */
+function definirClassement(jeton, nom, classement) {
+  verifierCapitaine_(jeton);
+  classement = String(classement || '');
+  if (classement && CLASSEMENTS.indexOf(classement) === -1) throw new Error('Classement inconnu : ' + classement);
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_JOUEURS);
+    if (sheet.getRange(1, 4).getValue() !== ENTETES_JOUEURS[3]) {
+      // 1re utilisation : colonnes Classement (en texte, sinon « 15/4 » devient une date) et date de vérification.
+      sheet.getRange(1, 3, 1, 3).setValues([ENTETES_JOUEURS.slice(2)]).setFontWeight('bold');
+      sheet.getRange('D:D').setNumberFormat('@');
+      sheet.getRange('E:E').setNumberFormat('dd/mm/yyyy');
+      ajouterListe_(sheet, 'D2:D', CLASSEMENTS);
+    }
+    var noms = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
+    var i = noms.indexOf(nom);
+    if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
+    var maintenant = new Date();
+    sheet.getRange(i + 2, 4).setNumberFormat('@');
+    sheet.getRange(i + 2, 4, 1, 2).setValues([[classement, classement ? maintenant : '']]);
+    SpreadsheetApp.flush();
+    return { classement: classement, classementLe: classement ? Utilities.formatDate(maintenant, 'Europe/Paris', 'yyyy-MM-dd') : '' };
+  } finally {
+    verrou.releaseLock();
+  }
+}
+
 /** 'N°1' … 'N°<NB_POSITIONS>' ou 'Remplaçant'. */
 function roleValide_(role) {
   var m = /^N°(\d)$/.exec(role);
@@ -745,6 +789,7 @@ function doPost(e) {
     supprimerJoueur: supprimerJoueur,
     validerCodeCapitaine: validerCodeCapitaine,
     definirCodePerso: definirCodePerso,
+    definirClassement: definirClassement,
     connexionCodePerso: connexionCodePerso,
     definirSelection: definirSelection,
   };
@@ -777,6 +822,8 @@ function getDonnees() {
       return {
         nom: String(l[0]).trim(),
         equipes: String(l[1]).split(',').map(function (e) { return e.trim(); }).filter(String),
+        classement: lireClassement_(l[3], tz),
+        classementLe: l[4] instanceof Date ? Utilities.formatDate(l[4], tz, 'yyyy-MM-dd') : '',
       };
     })
     .sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
@@ -788,6 +835,7 @@ function getDonnees() {
     groupes: GROUPES_INSCRIPTION.map(function (g) { return g.libelle; }),
     nbTerrains: NB_TERRAINS,
     nbPositions: NB_POSITIONS,
+    classements: CLASSEMENTS,
     maxDomicileParJour: MAX_DOMICILE_PAR_JOUR,
     joueurs: joueurs,
     rencontres: rencontres,
