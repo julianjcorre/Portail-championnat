@@ -607,6 +607,33 @@ function definirClassement(jeton, nom, classement) {
   }
 }
 
+/** Équipes d'une ligne de l'onglet Joueurs (colonne Équipe(s)). */
+function equipesDe_(ligne) {
+  return String(ligne[1]).split(',').map(function (e) { return e.trim(); }).filter(String);
+}
+
+/**
+ * Figer un joueur dans une équipe (il ne peut plus donner de dispo pour l'autre),
+ * ou '' pour le rendre libre (toutes les équipes). Écrit dans la colonne Équipe(s).
+ */
+function definirFige(jeton, nom, equipe) {
+  verifierCapitaine_(jeton);
+  equipe = String(equipe || '');
+  if (equipe && EQUIPES.indexOf(equipe) === -1) throw new Error('Équipe inconnue : ' + equipe);
+  var equipes = equipe ? [equipe] : EQUIPES.slice();
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var i = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); }).indexOf(nom);
+    if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
+    SpreadsheetApp.getActive().getSheetByName(ONGLET_JOUEURS).getRange(i + 2, 2).setValue(equipes.join(', '));
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return { equipes: equipes };
+}
+
 /** 'N°1' … 'N°<NB_POSITIONS>' ou 'Remplaçant'. */
 function roleValide_(role) {
   var m = /^N°(\d)$/.exec(role);
@@ -860,6 +887,7 @@ function doPost(e) {
     definirCodePerso: definirCodePerso,
     definirClassement: definirClassement,
     importerJoueurs: importerJoueurs,
+    definirFige: definirFige,
     connexionCodePerso: connexionCodePerso,
     definirSelection: definirSelection,
   };
@@ -925,12 +953,20 @@ function repondre(idsRencontres, nom, reponse) {
   if (!ids.length) throw new Error('Aucune rencontre indiquée.');
   if (reponse && REPONSES.indexOf(reponse) === -1) throw new Error('Réponse inconnue.');
 
-  var nomsConnus = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
-  if (nomsConnus.indexOf(nom) === -1) throw new Error('Joueur inconnu : ' + nom);
+  var ligneJoueur = lireLignes_(ONGLET_JOUEURS).filter(function (l) { return String(l[0]).trim() === nom; })[0];
+  if (!ligneJoueur) throw new Error('Joueur inconnu : ' + nom);
+  var sesEquipes = equipesDe_(ligneJoueur);
 
-  var idsConnus = lireLignes_(ONGLET_RENCONTRES).map(function (l) { return String(l[0]); });
+  var rencontres = lireLignes_(ONGLET_RENCONTRES);
+  var idsConnus = rencontres.map(function (l) { return String(l[0]); });
   ids.forEach(function (id) {
-    if (idsConnus.indexOf(id) === -1) throw new Error('Rencontre introuvable. Rechargez la page.');
+    var i = idsConnus.indexOf(id);
+    if (i === -1) throw new Error('Rencontre introuvable. Rechargez la page.');
+    // Joueur figé dans une équipe : pas de dispo pour les matchs de l'autre (annuler reste possible).
+    var equipe = String(rencontres[i][3]).trim();
+    if (reponse && sesEquipes.length && sesEquipes.indexOf(equipe) === -1) {
+      throw new Error(nom + ' est figé en ' + sesEquipes.join(', ') + ' : pas de dispo possible pour un match de ' + equipe + '.');
+    }
   });
 
   var verrou = LockService.getScriptLock();

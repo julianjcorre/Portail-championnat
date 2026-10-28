@@ -253,9 +253,14 @@
     .import-ligne small { color: var(--doux); text-align: right; }
     .import-ligne select { min-height: 40px; max-width: 55%; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte); color: var(--texte); font-family: inherit; font-size: 14px; }
     .fichier { display: block; width: 100%; padding: 14px; border: 2px dashed var(--ligne); border-radius: 12px; background: var(--carte); color: var(--texte); font-family: inherit; }
+    .fige { background: var(--fond); color: var(--doux); border-radius: 10px; padding: 12px; margin: 12px 0 6px; font-size: 15px; text-align: center; }
+    .joueur .actions-j select {
+      min-height: 38px; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte); color: var(--texte);
+      font-size: 14px; font-weight: 600; font-family: inherit;
+    }
     .renommer { display: flex; gap: 6px; width: 100%; }
     .renommer input { flex: 1; min-height: 42px; border-radius: 10px; border: 2px solid var(--jaune-fonce); padding: 0 10px; font-size: 16px; font-family: inherit; background: var(--carte); color: var(--texte); }
-    .renommer button { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 0; background: var(--jaune); color: #151515; font-weight: 700; font-family: inherit; cursor: pointer; }
+    .renommer button { min-height: 42px; padding: 0 12px; white-space: nowrap; border-radius: 10px; border: 0; background: var(--jaune); color: #151515; font-weight: 700; font-family: inherit; cursor: pointer; }
     .renommer button.annuler { background: var(--carte); color: var(--texte); border: 2px solid var(--ligne); }
     /* Installation et sélection */
     .etapes { margin: 0; padding-left: 22px; }
@@ -327,7 +332,7 @@
     var URL_API = 'https://script.google.com/macros/s/AKfycbw6zkDi717zVCuxSCE4YUY7KYUMTSJroeg_sjgdOOa3m1MFUf7jbcJBKdRbhFOrDKZd5g/exec';
     var FONCTIONS_SERVEUR = ['getDonnees', 'repondre', 'inscrire', 'demanderLienCapitaine', 'infoCapitaine', 'deconnecterCapitaine',
       'getDonneesCapitaines', 'enregistrerRencontre', 'supprimerRencontre', 'renommerJoueur', 'supprimerJoueur',
-      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement', 'importerJoueurs'];
+      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement', 'importerJoueurs', 'definirFige'];
     var surAppsScript = !!(window.google && google.script && google.script.run);
 
     /** Même usage que google.script.run : serveur().withSuccessHandler(…).withFailureHandler(…).fonction(args). */
@@ -426,6 +431,11 @@
     }
     function joueur(nom) {
       return donnees.joueurs.filter(function (j) { return j.nom === nom; })[0];
+    }
+    /** Équipe où le joueur est figé ('' = libre, il peut jouer dans toutes). */
+    function figeEn(j) {
+      var siennes = donnees.equipes.filter(function (e) { return j.equipes.indexOf(e) !== -1; });
+      return donnees.equipes.length > 1 && siennes.length === 1 ? siennes[0] : '';
     }
     function joueursEquipe(equipe) {
       return donnees.joueurs.filter(function (j) { return j.equipes.indexOf(equipe) !== -1; });
@@ -662,6 +672,7 @@
       var rep = reponseDe(r.id, moi);
       var b = bilan(r);
       var occupe = enCours[r.id] ? ' disabled' : '';
+      var moiJoueur = joueur(moi), fige = moiJoueur && moiJoueur.equipes.indexOf(r.equipe) === -1 ? figeEn(moiJoueur) : '';
       return '<div class="rencontre ' + classeEquipe(r.equipe) + '">' +
         '<div class="match">' + titreMatch(r) + '</div>' +
         '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
@@ -669,13 +680,15 @@
         messageTerrains(r) +
         (r.infos ? '<div class="infos">' + esc(r.infos) + '</div>' : '') +
         blocComposition(r) +
-        '<div class="boutons">' +
-          '<button class="oui' + (rep === 'Présent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Présent"' + occupe + '>' +
-            (rep === 'Présent' ? '✅ ' : '') + 'Je suis dispo</button>' +
-          '<button class="non' + (rep === 'Absent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Absent"' + occupe + '>' +
-            (rep === 'Absent' ? '❌ ' : '') + 'Pas dispo</button>' +
-        '</div>' +
-        (rep ? '<div class="aide">Touche à nouveau pour annuler ta réponse.</div>' : '') +
+        (fige
+          ? '<div class="fige">🔒 Tu es figé en ' + esc(fige) + ' : pas de dispo à donner pour ce match.</div>'
+          : '<div class="boutons">' +
+              '<button class="oui' + (rep === 'Présent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Présent"' + occupe + '>' +
+                (rep === 'Présent' ? '✅ ' : '') + 'Je suis dispo</button>' +
+              '<button class="non' + (rep === 'Absent' ? ' choisi' : '') + '" data-id="' + esc(r.id) + '" data-rep="Absent"' + occupe + '>' +
+                (rep === 'Absent' ? '❌ ' : '') + 'Pas dispo</button>' +
+            '</div>' +
+            (rep ? '<div class="aide">Touche à nouveau pour annuler ta réponse.</div>' : '')) +
         '<details><summary>' + compte(b.presents.length, 'dispo', 'dispos') + ' · ' +
           compte(b.absents.length, 'pas dispo', 'pas dispos') + ' · ' + b.sansReponse.length + ' sans réponse</summary><div class="liste">' +
           ligneNoms('✅ Dispos', b.presents) +
@@ -1035,6 +1048,7 @@
         return { j: j, total: matchsDe(j).length, n: nbReponsesDe(j) };
       }).sort(function (a, b) { return (b.total - b.n) - (a.total - a.n) || a.j.nom.localeCompare(b.j.nom, 'fr'); });
       var silencieux = liste.filter(function (x) { return x.total && !x.n; }).map(function (x) { return x.j.nom; });
+      html += '<p class="sous">« 🔒 H1 » : joueur figé en Hommes 1, il ne peut donner ses dispos que pour Hommes 1 (il voit quand même tous les matchs). Pareil pour « 🔒 H2 ».</p>';
       html += '<p class="sous">' + donnees.joueurs.length + ' joueur' + (donnees.joueurs.length > 1 ? 's' : '') + ' inscrit' +
         (donnees.joueurs.length > 1 ? 's' : '') + '.' + (silencieux.length ? ' Pas encore répondu du tout : <b>' + esc(silencieux.join(', ')) + '</b>.' : '') + '</p>';
       html += '<div class="carte">' + liste.map(function (x) {
@@ -1045,7 +1059,11 @@
         }
         return '<div class="joueur"><div class="qui-j"><b>' + esc(j.nom) + '</b><small>' + x.n + '/' + x.total + ' réponses' +
           (manque ? '<span class="pastille manque">' + manque + ' sans réponse</span>' : (x.total ? '<span class="pastille complet">à jour</span>' : '')) +
-          '</small></div><div class="actions-j"><button data-renommer="' + esc(j.nom) + '">✏️</button>' +
+          '</small></div><div class="actions-j">' + (donnees.equipes.length > 1 ? '<select aria-label="Équipe de ' + esc(j.nom) + '" data-fige-joueur="' + esc(j.nom) + '">' +
+            '<option value="">Libre</option>' + donnees.equipes.map(function (e) {
+              return '<option value="' + esc(e) + '"' + (figeEn(j) === e ? ' selected' : '') + '>🔒 ' + esc(abregeEquipe(e)) + '</option>';
+            }).join('') + '</select>' : '') +
+          '<button data-renommer="' + esc(j.nom) + '">✏️</button>' +
           '<button data-supprimer-joueur="' + esc(j.nom) + '">🗑</button></div></div>';
       }).join('') + '</div>';
       return html + '</div>';
@@ -1220,6 +1238,26 @@
           (b.renommes.length ? ', ' + n(b.renommes, 'renommé') : '') + (b.supprimes.length ? ', ' + n(b.supprimes, 'supprimé') : '') + '.';
         allerA('cap-classements', true);
       });
+    }
+
+    function definirFige(nom, equipe) {
+      var j = joueur(nom);
+      if (!j) return;
+      var avant = j.equipes;
+      j.equipes = equipe ? [equipe] : donnees.equipes.slice();
+      messageCap = equipe ? nom + ' est figé en ' + equipe + '.' : nom + ' peut jouer dans toutes les équipes.';
+      rendre();
+      serveur()
+        .withSuccessHandler(function (r) { j.equipes = r.equipes; })
+        .withFailureHandler(function (err) {
+          j.equipes = avant;
+          messageCap = '';
+          rendre();
+          var msg = err && err.message ? err.message : 'problème de connexion';
+          if (/expirée/.test(msg)) deconnexionCap();
+          afficherErreur('Non enregistré : ' + msg);
+        })
+        .definirFige(jeton, nom, equipe);
     }
 
     function definirClassement(nom, classement) {
@@ -1557,6 +1595,7 @@
     document.addEventListener('change', function (e) {
       if (e.target.hasAttribute('data-classement-joueur')) definirClassement(e.target.getAttribute('data-classement-joueur'), e.target.value);
       if (e.target.id === 'fichier-import' && e.target.files[0]) lireFichierImport(e.target.files[0]);
+      if (e.target.hasAttribute('data-fige-joueur')) definirFige(e.target.getAttribute('data-fige-joueur'), e.target.value);
       if (e.target.hasAttribute('data-import-orphelin') && importPlan) {
         importPlan.choix[e.target.getAttribute('data-import-orphelin')] = e.target.value;
         rendre();
