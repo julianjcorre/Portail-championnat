@@ -241,6 +241,18 @@
       min-height: 40px; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte); color: var(--texte);
       font-size: 16px; font-weight: 700; font-family: inherit; padding: 0 6px;
     }
+    .noms { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .noms button {
+      min-height: 52px; border-radius: 12px; border: 2px solid var(--ligne); background: var(--carte); color: var(--texte);
+      font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; padding: 0 8px; text-align: left;
+    }
+    .confirmer { text-align: center; }
+    .qui .confirmer .nom-choisi { font-size: 28px; font-weight: 800; margin: 6px 0 2px; color: var(--texte); }
+    .import-ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--ligne); font-size: 15px; }
+    .import-ligne:first-child { border-top: 0; }
+    .import-ligne small { color: var(--doux); text-align: right; }
+    .import-ligne select { min-height: 40px; max-width: 55%; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte); color: var(--texte); font-family: inherit; font-size: 14px; }
+    .fichier { display: block; width: 100%; padding: 14px; border: 2px dashed var(--ligne); border-radius: 12px; background: var(--carte); color: var(--texte); font-family: inherit; }
     .renommer { display: flex; gap: 6px; width: 100%; }
     .renommer input { flex: 1; min-height: 42px; border-radius: 10px; border: 2px solid var(--jaune-fonce); padding: 0 10px; font-size: 16px; font-family: inherit; background: var(--carte); color: var(--texte); }
     .renommer button { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 0; background: var(--jaune); color: #151515; font-weight: 700; font-family: inherit; cursor: pointer; }
@@ -315,7 +327,7 @@
     var URL_API = 'https://script.google.com/macros/s/AKfycbw6zkDi717zVCuxSCE4YUY7KYUMTSJroeg_sjgdOOa3m1MFUf7jbcJBKdRbhFOrDKZd5g/exec';
     var FONCTIONS_SERVEUR = ['getDonnees', 'repondre', 'inscrire', 'demanderLienCapitaine', 'infoCapitaine', 'deconnecterCapitaine',
       'getDonneesCapitaines', 'enregistrerRencontre', 'supprimerRencontre', 'renommerJoueur', 'supprimerJoueur',
-      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement'];
+      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement', 'importerJoueurs'];
     var surAppsScript = !!(window.google && google.script && google.script.run);
 
     /** Même usage que google.script.run : serveur().withSuccessHandler(…).withFailureHandler(…).fonction(args). */
@@ -345,7 +357,8 @@
     var CLE_NOM = 'tcb-championnat-nom';
     var donnees = null;
     var enCours = {}; // rencontres dont la réponse part au serveur
-    var inscription = { nom: '', choixGroupe: false, envoi: false };
+    var choixMoi = '';         // nom touché dans « Qui es-tu ? », en attente de confirmation
+    var importPlan = null;     // import de la liste FFT en cours (voir ecranImport)
 
     // --- Mémoire du téléphone (peut être indisponible en navigation privée) ---
     function lireNom() { try { return localStorage.getItem(CLE_NOM); } catch (e) { return null; } }
@@ -487,8 +500,6 @@
       document.querySelector('header').classList.toggle('cap-connecte', !!capitaine);
       boutonJoueur.classList.toggle('actif', vue === 'matchs');
       boutonCap.classList.toggle('actif', vue.indexOf('cap') === 0);
-      var champ = document.getElementById('champ-nom');
-      if (champ && !inscription.choixGroupe) inscription.nom = champ.value;
       if (vue === 'cap-form') lireBrouillon();
 
       if (vue === 'installer') {
@@ -530,19 +541,20 @@
 
     function ecranQui() {
       var html = '<div class="qui"><h2>Qui es-tu ?</h2>';
-      if (!inscription.choixGroupe) {
-        return html + '<p>La première fois seulement : ton téléphone s\'en souviendra.</p>' +
-          '<form id="form-nom"><label for="champ-nom">Ton prénom et l\'initiale de ton nom</label>' +
-          '<input id="champ-nom" placeholder="ex. Julien C." autocomplete="name" autocapitalize="words" maxlength="40" value="' +
-            esc(inscription.nom) + '">' +
-          '<button class="gros" type="submit">Continuer</button></form></div>' + piedCapitaines();
+      if (choixMoi && joueur(choixMoi)) {
+        return html + '<div class="carte confirmer"><p>Tu es bien</p><p class="nom-choisi">' + esc(choixMoi) + '</p>' +
+          '<button class="gros" id="confirmer-moi">Oui, c\'est moi</button>' +
+          '<button class="gros second" id="pas-moi">Non, revenir à la liste</button></div></div>';
       }
-      html += '<p>Bienvenue <b>' + esc(inscription.nom) + '</b> ! Tu joues dans quelle équipe ?</p>';
-      donnees.groupes.forEach(function (g) {
-        html += '<button class="gros second" data-groupe="' + esc(g) + '"' +
-          (inscription.envoi ? ' disabled' : '') + '>' + esc(g) + '</button>';
-      });
-      return html + '<button class="retour" id="corriger-nom">← Corriger mon nom</button></div>';
+      if (!donnees.joueurs.length) {
+        return html + '<p>La liste des joueurs est encore vide : un capitaine doit l\'importer.</p></div>' + piedCapitaines();
+      }
+      var tries = donnees.joueurs.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
+      return html + '<p>Touche ton nom. La première fois seulement : ton téléphone s\'en souviendra.</p>' +
+        '<div class="noms">' + tries.map(function (j) {
+          return '<button data-moi="' + esc(j.nom) + '">' + esc(j.nom) + '</button>';
+        }).join('') + '</div>' +
+        '<p class="sous" style="margin-top:14px">Tu n\'es pas dans la liste ? Demande à un capitaine de t\'ajouter.</p></div>' + piedCapitaines();
     }
 
     function piedCapitaines() {
@@ -796,6 +808,7 @@
       if (vue === 'cap-joueurs') return ecranJoueurs();
       if (vue === 'cap-code') return ecranCodePerso();
       if (vue === 'cap-classements') return ecranClassements();
+      if (vue === 'cap-import') return ecranImport();
       var nbAttente = donnees.rencontres.filter(function (r) { return r.statut !== 'Validée'; }).length;
       return '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
@@ -1013,8 +1026,10 @@
     }
 
     function ecranJoueurs() {
-      var html = enTeteCap('Joueurs');
-      if (!donnees.joueurs.length) return html + '<div class="vide">Aucun joueur inscrit pour le moment.</div></div>';
+      var html = enTeteCap('Joueurs') +
+        '<form id="form-ajout-joueur" class="renommer" style="margin-bottom:14px"><input id="nom-ajout" maxlength="40" placeholder="Ajouter un joueur : Prénom N" autocapitalize="words">' +
+        '<button type="submit">➕ Ajouter</button></form>';
+      if (!donnees.joueurs.length) return html + '<div class="vide">Aucun joueur pour le moment : ajoute-les ici ou importe la liste FFT (Classements).</div></div>';
       // Ceux à qui il manque le plus de réponses d'abord.
       var liste = donnees.joueurs.map(function (j) {
         return { j: j, total: matchsDe(j).length, n: nbReponsesDe(j) };
@@ -1056,7 +1071,8 @@
       if (!donnees.classements) return html + '<div class="vide">Mise à jour en cours : recharge la page dans une minute.</div></div>';
       var n = classementsAVerifier();
       html += '<p class="sous">Les classements FFT peuvent changer chaque mois. Choisis le classement de chaque joueur, ' +
-        'ou touche <b>✓ Bon</b> s\'il n\'a pas changé.' + (n ? ' <b>' + n + ' à vérifier.</b>' : ' Tout est à jour.') + '</p>';
+        'ou touche <b>✓ Bon</b> s\'il n\'a pas changé.' + (n ? ' <b>' + n + ' à vérifier.</b>' : ' Tout est à jour.') + '</p>' +
+        '<button class="gros second" data-vue="cap-import" style="margin:0 0 14px">📥 Importer la liste FFT (Excel)</button>';
       html += '<div class="carte">' + donnees.joueurs.map(function (j) {
         var perime = classementPerime(j);
         var detail = !j.classement ? '<span class="pastille manque">pas de classement</span>'
@@ -1071,9 +1087,139 @@
       return html + '</div>';
     }
 
-    function dateCourte(iso) {
-      if (!iso) return '';
-      return new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    // --- Import de la liste des adhérents exportée de l'espace dirigeant FFT ---
+    // Le fichier est lu dans le téléphone : seuls nom, prénom, licence et classement partent au serveur.
+    var URL_XLSX = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+
+    function ecranImport() {
+      var html = enTeteCap('📥 Importer la liste FFT', 'cap-classements', 'Classements') +
+        '<p class="sous">Dans l\'espace dirigeant FFT, exporte la liste des adhérents (Excel), puis choisis le fichier ici. ' +
+        'Seuls le nom, le prénom, la licence et le classement sont lus : le reste du fichier ne quitte pas ton téléphone.</p>' +
+        '<input class="fichier" type="file" id="fichier-import" accept=".xls,.xlsx,.csv">';
+      if (!importPlan) return html + '</div>';
+      var p = importPlan, deja = [], nouveaux = [], cibles = ciblesImport();
+      p.entrees.forEach(function (e) { (e.existant || cibles[e.nom] ? deja : nouveaux).push(e); });
+      var ligneChangement = function (e) {
+        var ancien = e.existant || cibles[e.nom], j = joueur(ancien) || {}, notes = [];
+        if (ancien !== e.nom) notes.push(esc(ancien) + ' → ' + esc(e.nom));
+        if ((j.classement || '') !== e.classement) notes.push(esc((j.classement || '—') + ' → ' + (e.classement || '—')));
+        return '<div class="import-ligne"><b>' + esc(e.nom) + pastilleClassement({ classement: e.classement }) + '</b><small>' +
+          (notes.length ? notes.join('<br>') : 'inchangé') + '</small></div>';
+      };
+      html += '<div class="info">' + p.entrees.length + ' licencié' + (p.entrees.length > 1 ? 's' : '') + ' dans le fichier' +
+        (p.ignores ? ' (' + p.ignores + ' femme' + (p.ignores > 1 ? 's' : '') + ' ignorée' + (p.ignores > 1 ? 's' : '') + ' : équipes Hommes)' : '') + '.</div>';
+      if (deja.length) html += '<p class="groupe-titre">Déjà dans l\'appli (' + deja.length + ')</p><div class="carte">' + deja.map(ligneChangement).join('') + '</div>';
+      if (nouveaux.length) html += '<p class="groupe-titre">Nouveaux joueurs (' + nouveaux.length + ')</p><div class="carte">' + nouveaux.map(function (e) {
+        return '<div class="import-ligne"><b>' + esc(e.nom) + pastilleClassement({ classement: e.classement }) + '</b><small>ajouté</small></div>';
+      }).join('') + '</div>';
+      if (p.orphelins.length) {
+        var libres = p.entrees.filter(function (e) { return !e.existant; });
+        html += '<p class="groupe-titre">Dans l\'appli mais pas dans le fichier (' + p.orphelins.length + ')</p>' +
+          '<p class="sous">Un joueur inscrit avec un autre nom ? Choisis qui c\'est : il garde ses réponses.</p><div class="carte">' +
+          p.orphelins.map(function (a) {
+            var v = p.choix[a] || '';
+            return '<div class="import-ligne"><b>' + esc(a) + '</b><select data-import-orphelin="' + esc(a) + '">' +
+              '<option value="">Garder tel quel</option>' +
+              '<option value="supprimer"' + (v === 'supprimer' ? ' selected' : '') + '>Supprimer (et ses réponses)</option>' +
+              libres.map(function (e) {
+                if (cibles[e.nom] && cibles[e.nom] !== a) return ''; // déjà attribué à un autre
+                return '<option value="=' + esc(e.nom) + '"' + (v === '=' + e.nom ? ' selected' : '') + '>C\'est ' + esc(e.nom) + '</option>';
+              }).join('') + '</select></div>';
+          }).join('') + '</div>';
+      }
+      return html + '<button class="gros" id="lancer-import">Importer</button></div>';
+    }
+
+    /** Nom du fichier → ancien nom dans l'appli, d'après les choix « C'est … ». */
+    function ciblesImport() {
+      var cibles = {};
+      Object.keys(importPlan.choix).forEach(function (a) {
+        if (importPlan.choix[a].indexOf('=') === 0) cibles[importPlan.choix[a].slice(1)] = a;
+      });
+      return cibles;
+    }
+
+    function chargerXlsx(ensuite) {
+      if (window.XLSX) return ensuite();
+      var script = document.createElement('script');
+      script.src = URL_XLSX;
+      script.onload = ensuite;
+      script.onerror = function () { afficherErreur('Lecture du fichier impossible : vérifie ta connexion.'); };
+      document.head.appendChild(script);
+    }
+
+    function lireFichierImport(fichier) {
+      chargerXlsx(function () {
+        var lecteur = new FileReader();
+        lecteur.onload = function () {
+          try {
+            importPlan = planImport(XLSX.read(new Uint8Array(lecteur.result), { type: 'array' }));
+          } catch (err) {
+            importPlan = null;
+            afficherErreur(err.message);
+          }
+          rendre();
+        };
+        lecteur.readAsArrayBuffer(fichier);
+      });
+    }
+
+    /** Lignes du fichier → joueurs à importer, rapprochés des joueurs déjà dans l'appli. */
+    function planImport(classeur) {
+      var lignes = null, col = null;
+      classeur.SheetNames.some(function (nomOnglet) {
+        var rangees = XLSX.utils.sheet_to_json(classeur.Sheets[nomOnglet], { header: 1, defval: '', raw: false });
+        return rangees.some(function (r, i) {
+          var t = r.map(function (c) { return String(c).trim(); });
+          var c = { nom: t.indexOf('Nom'), prenom: t.indexOf('Prénom'), licence: t.indexOf('Licence'), sexe: t.indexOf('Sexe'),
+            classement: t.indexOf('Class.') !== -1 ? t.indexOf('Class.') : t.indexOf('Dernier class. tennis') };
+          if (c.nom === -1 || c.prenom === -1 || c.licence === -1 || c.classement === -1) return false;
+          lignes = rangees.slice(i + 1);
+          col = c;
+          return true;
+        });
+      });
+      if (!lignes) throw new Error('Fichier non reconnu : il faut les colonnes Nom, Prénom, Licence et Class. (export « Liste des adhérents »).');
+      var ignores = 0, entrees = [];
+      lignes.forEach(function (r) {
+        var nom = String(r[col.nom] || '').trim(), prenom = String(r[col.prenom] || '').trim();
+        if (!nom || !prenom) return;
+        if (col.sexe !== -1 && String(r[col.sexe]).trim() === 'F') { ignores++; return; }
+        var clt = String(r[col.classement] || '').trim();
+        var initiale = (nom.normalize('NFC').match(/\p{L}/u) || [''])[0].toUpperCase();
+        entrees.push({ nom: nettoyerNom(prenom) + ' ' + initiale, complet: nettoyerNom(prenom + ' ' + nom),
+          licence: String(r[col.licence] || '').trim().toUpperCase(), classement: (donnees.classements || []).indexOf(clt) !== -1 ? clt : '' });
+      });
+      if (!entrees.length) throw new Error('Aucun licencié trouvé dans le fichier.');
+      // Même prénom et même initiale : nom complet pour les deux.
+      var vus = {};
+      entrees.forEach(function (e) { vus[cleNom(e.nom)] = (vus[cleNom(e.nom)] || 0) + 1; });
+      entrees.forEach(function (e) { if (vus[cleNom(e.nom)] > 1) e.nom = e.complet; });
+      var pris = {};
+      entrees.forEach(function (e) {
+        var j = donnees.joueurs.filter(function (x) {
+          return !pris[x.nom] && (cleNom(x.nom) === cleNom(e.nom) || cleNom(x.nom) === cleNom(e.complet));
+        })[0];
+        if (j) { e.existant = j.nom; pris[j.nom] = true; }
+      });
+      var orphelins = donnees.joueurs.filter(function (j) { return !pris[j.nom]; }).map(function (j) { return j.nom; });
+      return { entrees: entrees, orphelins: orphelins, ignores: ignores, choix: {} };
+    }
+
+    function lancerImport() {
+      var supprimer = Object.keys(importPlan.choix).filter(function (a) { return importPlan.choix[a] === 'supprimer'; });
+      if (supprimer.length && !confirm('Supprimer ' + supprimer.join(', ') + ' et toutes leurs réponses ?')) return;
+      var cibles = ciblesImport();
+      var envoi = importPlan.entrees.map(function (e) {
+        return { nom: e.nom, ancien: e.existant || cibles[e.nom] || '', licence: e.licence, classement: e.classement };
+      });
+      appelCap('importerJoueurs', [envoi, supprimer], function (b) {
+        var n = function (x, mot) { return x.length + ' ' + mot + (x.length > 1 ? 's' : ''); };
+        importPlan = null;
+        messageCap = 'Import terminé : ' + n(b.ajoutes, 'ajouté') + ', ' + n(b.classements, 'classement') + ' modifié' + (b.classements.length > 1 ? 's' : '') +
+          (b.renommes.length ? ', ' + n(b.renommes, 'renommé') : '') + (b.supprimes.length ? ', ' + n(b.supprimes, 'supprimé') : '') + '.';
+        allerA('cap-classements', true);
+      });
     }
 
     function definirClassement(nom, classement) {
@@ -1364,6 +1510,8 @@
       } else if (cible.hasAttribute('data-filtre-jour')) {
         filtreJour = cible.getAttribute('data-filtre-jour');
         rendre();
+      } else if (cible.id === 'lancer-import') {
+        lancerImport();
       } else if (cible.hasAttribute('data-toujours-bon')) {
         var jb = joueur(cible.getAttribute('data-toujours-bon'));
         if (jb) definirClassement(jb.nom, jb.classement);
@@ -1387,15 +1535,19 @@
         deconnexionCap();
         modeMail = false;
         allerA('matchs');
-      } else if (cible.hasAttribute('data-groupe')) {
-        inscrire(cible.getAttribute('data-groupe'));
-      } else if (cible.id === 'corriger-nom') {
-        inscription.choixGroupe = false;
+      } else if (cible.hasAttribute('data-moi')) {
+        choixMoi = cible.getAttribute('data-moi');
+        rendre();
+        window.scrollTo(0, 0);
+      } else if (cible.id === 'confirmer-moi') {
+        connecter(choixMoi);
+      } else if (cible.id === 'pas-moi') {
+        choixMoi = '';
         rendre();
       } else if (cible.id === 'changer') {
         moi = null;
         ecrireNom(null);
-        inscription = { nom: '', choixGroupe: false, envoi: false };
+        choixMoi = '';
         rendre();
       } else if (cible.hasAttribute('data-rep')) {
         repondre(cible.getAttribute('data-id'), cible.getAttribute('data-rep'));
@@ -1404,6 +1556,11 @@
 
     document.addEventListener('change', function (e) {
       if (e.target.hasAttribute('data-classement-joueur')) definirClassement(e.target.getAttribute('data-classement-joueur'), e.target.value);
+      if (e.target.id === 'fichier-import' && e.target.files[0]) lireFichierImport(e.target.files[0]);
+      if (e.target.hasAttribute('data-import-orphelin') && importPlan) {
+        importPlan.choix[e.target.getAttribute('data-import-orphelin')] = e.target.value;
+        rendre();
+      }
     });
 
     document.addEventListener('submit', function (e) {
@@ -1506,15 +1663,19 @@
         });
         return;
       }
-      if (e.target.id !== 'form-nom') return;
-      e.preventDefault();
-      var saisie = nettoyerNom(document.getElementById('champ-nom').value);
-      if (cleNom(saisie).length < 2) { afficherErreur('Écris ton prénom et l\'initiale de ton nom.'); return; }
-      inscription.nom = saisie;
-      var existant = joueurParSaisie(saisie);
-      if (existant) connecter(existant.nom);
-      else if (donnees.groupes.length === 1) inscrire(donnees.groupes[0]); // une seule équipe : pas de question
-      else { inscription.choixGroupe = true; rendre(); }
+      if (e.target.id === 'form-ajout-joueur') {
+        e.preventDefault();
+        var nomAjout = nettoyerNom(document.getElementById('nom-ajout').value);
+        if (cleNom(nomAjout).length < 2) { afficherErreur('Écris le prénom et l\'initiale du nom.'); return; }
+        if (joueurParSaisie(nomAjout)) { afficherErreur(joueurParSaisie(nomAjout).nom + ' est déjà dans la liste.'); return; }
+        var b5 = e.target.querySelector('button');
+        b5.disabled = true;
+        serveur()
+          .withSuccessHandler(function (r) { donnees = r.donnees; messageCap = r.nom + ' a été ajouté à la liste des joueurs.'; rendre(); })
+          .withFailureHandler(function (err) { b5.disabled = false; afficherErreur(err && err.message ? err.message : 'Ajout impossible.'); })
+          .inscrire(nomAjout, donnees.groupes[0]);
+        return;
+      }
     });
 
     /** Garde le jeton capitaine sur le téléphone puis ouvre l'écran demandé. */
@@ -1531,22 +1692,9 @@
     function connecter(nom) {
       moi = nom;
       ecrireNom(moi);
-      inscription = { nom: '', choixGroupe: false, envoi: false };
+      choixMoi = '';
       rendre();
       window.scrollTo(0, 0);
-    }
-
-    function inscrire(groupe) {
-      inscription.envoi = true;
-      rendre();
-      serveur()
-        .withSuccessHandler(function (r) { donnees = r.donnees; connecter(r.nom); })
-        .withFailureHandler(function (err) {
-          inscription.envoi = false;
-          rendre();
-          afficherErreur('Inscription impossible : ' + (err && err.message ? err.message : 'problème de connexion') + '.');
-        })
-        .inscrire(inscription.nom, groupe);
     }
 
     function charger() {

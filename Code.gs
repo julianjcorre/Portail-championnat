@@ -44,7 +44,7 @@ var ONGLET_REPONSES = 'Réponses';
 var ONGLET_SELECTION = 'Sélection';
 
 var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos', 'Terrains'];
-var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le', 'Classement', 'Classement vérifié le'];
+var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le', 'Classement', 'Classement vérifié le', 'Licence'];
 var ENTETES_REPONSES = ['ID rencontre', 'Nom', 'Réponse', 'Répondu le'];
 var ENTETES_SELECTION = ['ID rencontre', 'Nom', 'Rôle', 'Modifié le'];
 
@@ -515,6 +515,74 @@ function lireClassement_(valeur, tz) {
 }
 
 /**
+ * Onglet Joueurs avec ses colonnes Classement (en texte, sinon « 15/4 » devient une date),
+ * Classement vérifié le et Licence, créées à la 1re utilisation.
+ */
+function colonnesClassement_() {
+  var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_JOUEURS);
+  if (sheet.getRange(1, 6).getValue() !== ENTETES_JOUEURS[5]) {
+    sheet.getRange(1, 3, 1, 4).setValues([ENTETES_JOUEURS.slice(2)]).setFontWeight('bold');
+    sheet.getRange('D:D').setNumberFormat('@');
+    sheet.getRange('E:E').setNumberFormat('dd/mm/yyyy');
+    sheet.getRange('F:F').setNumberFormat('@');
+    ajouterListe_(sheet, 'D2:D', CLASSEMENTS);
+  }
+  return sheet;
+}
+
+/**
+ * Import de la liste des licenciés (export FFT lu dans la page : seuls nom, licence et
+ * classement arrivent ici). joueurs = [{ nom, ancien, licence, classement }] :
+ * « ancien » = nom actuel dans la Sheet à renommer (garde ses réponses), sinon le joueur
+ * est retrouvé par son nom, ou ajouté. supprimer = noms à retirer de la liste.
+ */
+function importerJoueurs(jeton, joueurs, supprimer) {
+  verifierCapitaine_(jeton);
+  if (!Array.isArray(joueurs) || joueurs.length > 300) throw new Error('Liste invalide.');
+  var bilan = { ajoutes: [], renommes: [], classements: [], supprimes: [] };
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(30000);
+  try {
+    var sheet = colonnesClassement_();
+    var maintenant = new Date();
+    var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+    var equipes = GROUPES_INSCRIPTION[0].equipes.join(', ');
+    joueurs.forEach(function (j) {
+      var nom = nettoyerNom_(j.nom);
+      if (nom.length < 2 || nom.length > 40 || !/^[\p{L} .'-]+$/u.test(nom)) throw new Error('Nom invalide : ' + j.nom);
+      var classement = CLASSEMENTS.indexOf(String(j.classement || '')) !== -1 ? String(j.classement) : '';
+      var licence = String(j.licence || '').toUpperCase().replace(/\s+/g, ' ').trim();
+      if (licence && !/^\d{7} ?[A-Z]$/.test(licence)) throw new Error('Licence invalide pour ' + nom + ' : ' + j.licence);
+      var lignes = lireLignes_(ONGLET_JOUEURS);
+      var noms = lignes.map(function (l) { return String(l[0]).trim(); });
+      var i = j.ancien ? noms.indexOf(j.ancien) : -1;
+      if (j.ancien && i === -1) throw new Error('Joueur introuvable : ' + j.ancien + '. Rechargez la page.');
+      if (i === -1) i = noms.map(cleNom_).indexOf(cleNom_(nom));
+      if (i === -1) {
+        sheet.appendRow([nom, equipes, maintenant, classement, classement ? maintenant : '', licence]);
+        bilan.ajoutes.push(nom);
+        return;
+      }
+      if (noms[i] !== nom) {
+        renommerSansVerrou_(noms[i], nom);
+        bilan.renommes.push({ avant: noms[i], apres: nom });
+      }
+      var avant = lireClassement_(lignes[i][3], tz);
+      if (avant !== classement) bilan.classements.push({ nom: nom, avant: avant, apres: classement });
+      sheet.getRange(i + 2, 4, 1, 3).setValues([[classement, classement ? maintenant : '', licence]]);
+    });
+    (Array.isArray(supprimer) ? supprimer : []).forEach(function (nom) {
+      supprimerSansVerrou_(String(nom));
+      bilan.supprimes.push(String(nom));
+    });
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return bilan;
+}
+
+/**
  * Classement d'un joueur, saisi par un capitaine ('' pour l'effacer).
  * Remet aussi la date de vérification à aujourd'hui (même classement = « toujours bon »).
  */
@@ -525,14 +593,7 @@ function definirClassement(jeton, nom, classement) {
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
   try {
-    var sheet = SpreadsheetApp.getActive().getSheetByName(ONGLET_JOUEURS);
-    if (sheet.getRange(1, 4).getValue() !== ENTETES_JOUEURS[3]) {
-      // 1re utilisation : colonnes Classement (en texte, sinon « 15/4 » devient une date) et date de vérification.
-      sheet.getRange(1, 3, 1, 3).setValues([ENTETES_JOUEURS.slice(2)]).setFontWeight('bold');
-      sheet.getRange('D:D').setNumberFormat('@');
-      sheet.getRange('E:E').setNumberFormat('dd/mm/yyyy');
-      ajouterListe_(sheet, 'D2:D', CLASSEMENTS);
-    }
+    var sheet = colonnesClassement_();
     var noms = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
     var i = noms.indexOf(nom);
     if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
@@ -685,34 +746,38 @@ function supprimerRencontre(jeton, id) {
 /** Renomme un joueur dans l'onglet Joueurs et dans ses réponses. */
 function renommerJoueur(jeton, ancien, nouveauSaisi) {
   verifierCapitaine_(jeton);
-  var nouveau = nettoyerNom_(nouveauSaisi);
-  if (nouveau.length < 2 || nouveau.length > 40 || !/^[\p{L} .'-]+$/u.test(nouveau)) throw new Error('Nom invalide.');
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
   try {
-    var ss = SpreadsheetApp.getActive();
-    var noms = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
-    var i = noms.indexOf(ancien);
-    if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
-    var doublon = noms.filter(function (n, j) { return j !== i && cleNom_(n) === cleNom_(nouveau); })[0];
-    if (doublon) throw new Error('« ' + doublon + ' » existe déjà : supprime plutôt le doublon.');
-    ss.getSheetByName(ONGLET_JOUEURS).getRange(i + 2, 1).setValue(nouveau);
-    if (ss.getSheetByName(ONGLET_SELECTION)) {
-      var selection = ss.getSheetByName(ONGLET_SELECTION);
-      lireLignes_(ONGLET_SELECTION).forEach(function (l, j) {
-        if (String(l[1]).trim() === ancien) selection.getRange(j + 2, 2).setValue(nouveau);
-      });
-    }
-
-    var reponses = ss.getSheetByName(ONGLET_REPONSES);
-    lireLignes_(ONGLET_REPONSES).forEach(function (l, j) {
-      if (String(l[1]).trim() === ancien) reponses.getRange(j + 2, 2).setValue(nouveau);
-    });
-    SpreadsheetApp.flush();
+    return { nom: renommerSansVerrou_(ancien, nouveauSaisi) };
   } finally {
     verrou.releaseLock();
   }
-  return { nom: nouveau };
+}
+
+/** Renomme un joueur partout (Joueurs, Réponses, Sélection). À appeler sous verrou. */
+function renommerSansVerrou_(ancien, nouveauSaisi) {
+  var nouveau = nettoyerNom_(nouveauSaisi);
+  if (nouveau.length < 2 || nouveau.length > 40 || !/^[\p{L} .'-]+$/u.test(nouveau)) throw new Error('Nom invalide : ' + nouveauSaisi);
+  var ss = SpreadsheetApp.getActive();
+  var noms = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); });
+  var i = noms.indexOf(ancien);
+  if (i === -1) throw new Error('Joueur introuvable : ' + ancien + '. Rechargez la page.');
+  var doublon = noms.filter(function (n, j) { return j !== i && cleNom_(n) === cleNom_(nouveau); })[0];
+  if (doublon) throw new Error('« ' + doublon + ' » existe déjà : supprime plutôt le doublon.');
+  ss.getSheetByName(ONGLET_JOUEURS).getRange(i + 2, 1).setValue(nouveau);
+  if (ss.getSheetByName(ONGLET_SELECTION)) {
+    var selection = ss.getSheetByName(ONGLET_SELECTION);
+    lireLignes_(ONGLET_SELECTION).forEach(function (l, j) {
+      if (String(l[1]).trim() === ancien) selection.getRange(j + 2, 2).setValue(nouveau);
+    });
+  }
+  var reponses = ss.getSheetByName(ONGLET_REPONSES);
+  lireLignes_(ONGLET_REPONSES).forEach(function (l, j) {
+    if (String(l[1]).trim() === ancien) reponses.getRange(j + 2, 2).setValue(nouveau);
+  });
+  SpreadsheetApp.flush();
+  return nouveau;
 }
 
 /** Supprime un joueur et ses réponses. */
@@ -721,22 +786,26 @@ function supprimerJoueur(jeton, nom) {
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
   try {
-    var ss = SpreadsheetApp.getActive();
-    var i = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); }).indexOf(nom);
-    if (i === -1) throw new Error('Joueur introuvable. Rechargez la page.');
-    ss.getSheetByName(ONGLET_JOUEURS).deleteRow(i + 2);
-    supprimerLignesSelection_(function (l) { return String(l[1]).trim() === nom; });
-
-    var reponses = ss.getSheetByName(ONGLET_REPONSES);
-    lireLignes_(ONGLET_REPONSES)
-      .map(function (l, j) { return String(l[1]).trim() === nom ? j + 2 : 0; })
-      .filter(Boolean).reverse()
-      .forEach(function (n) { reponses.deleteRow(n); });
-    SpreadsheetApp.flush();
+    supprimerSansVerrou_(nom);
   } finally {
     verrou.releaseLock();
   }
   return { nom: nom };
+}
+
+/** Supprime un joueur, ses réponses et sa sélection. À appeler sous verrou. */
+function supprimerSansVerrou_(nom) {
+  var ss = SpreadsheetApp.getActive();
+  var i = lireLignes_(ONGLET_JOUEURS).map(function (l) { return String(l[0]).trim(); }).indexOf(nom);
+  if (i === -1) throw new Error('Joueur introuvable : ' + nom + '. Rechargez la page.');
+  ss.getSheetByName(ONGLET_JOUEURS).deleteRow(i + 2);
+  supprimerLignesSelection_(function (l) { return String(l[1]).trim() === nom; });
+  var reponses = ss.getSheetByName(ONGLET_REPONSES);
+  lireLignes_(ONGLET_REPONSES)
+    .map(function (l, j) { return String(l[1]).trim() === nom ? j + 2 : 0; })
+    .filter(Boolean).reverse()
+    .forEach(function (n) { reponses.deleteRow(n); });
+  SpreadsheetApp.flush();
 }
 
 function supprimerLignesSelection_(condition) {
@@ -790,6 +859,7 @@ function doPost(e) {
     validerCodeCapitaine: validerCodeCapitaine,
     definirCodePerso: definirCodePerso,
     definirClassement: definirClassement,
+    importerJoueurs: importerJoueurs,
     connexionCodePerso: connexionCodePerso,
     definirSelection: definirSelection,
   };
