@@ -1031,7 +1031,11 @@
       return (donnees.calendrier || []).filter(function (r) { return r.date <= jour; })
         .sort(function (a, b) { return b.date.localeCompare(a.date) || a.equipe.localeCompare(b.equipe); });
     }
-    function resultatDe(id) { return (donnees.resultats || []).filter(function (x) { return x.id === id; })[0]; }
+    /** Résultat d'une rencontre : même ID, ou même date et même équipe (résultat saisi sous un autre ID). */
+    function resultatDe(id) {
+      var r = (donnees.calendrier || []).filter(function (x) { return x.id === id; })[0];
+      return (donnees.resultats || []).filter(function (x) { return x.id === id || (r && x.date === r.date && x.equipe === r.equipe); })[0];
+    }
     function resultatsASaisir() {
       return rencontresJouees().filter(function (r) { return !resultatDe(r.id); }).length;
     }

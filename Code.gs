@@ -963,8 +963,11 @@ function enregistrerResultat(jeton, idRencontre, parties) {
   verrou.waitLock(10000);
   try {
     var sheet = ongletResultats_();
+    var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+    var cleRencontre = cleResultat_([idRencontre, ligne[1], ligne[3]], tz);
+    // Remplace aussi un résultat de la même date et de la même équipe enregistré sous un autre ID.
     lireLignes_(ONGLET_RESULTATS)
-      .map(function (l, i) { return String(l[0]) === String(idRencontre) ? i + 2 : 0; })
+      .map(function (l, i) { return String(l[0]) === String(idRencontre) || cleResultat_(l, tz) === cleRencontre ? i + 2 : 0; })
       .filter(Boolean).reverse()
       .forEach(function (n) { sheet.deleteRow(n); });
     if (lignes.length) sheet.getRange(sheet.getLastRow() + 1, 1, lignes.length, ENTETES_RESULTATS.length).setValues(lignes);
@@ -999,6 +1002,41 @@ var RESULTATS_INITIAUX = [
   },
 ];
 
+/** « 2026-10-18|Hommes 1 » pour une ligne de l'onglet Résultats. */
+function cleResultat_(l, tz) {
+  return (l[1] instanceof Date ? Utilities.formatDate(l[1], tz, 'yyyy-MM-dd') : String(l[1]).trim()) + '|' + String(l[2]).trim();
+}
+
+/**
+ * Supprime les résultats en double (même date, même équipe, ID différent) : garde le premier saisi.
+ * Corrige le doublon créé par l'import des résultats initiaux. Ne s'exécute qu'une fois.
+ */
+function dedoublonnerResultatsUneFois_() {
+  var props = PropertiesService.getScriptProperties();
+  var CLE = 'resultats_dedoublonnes_2026_10';
+  if (props.getProperty(CLE) || !SpreadsheetApp.getActive().getSheetByName(ONGLET_RESULTATS)) return;
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(20000);
+  try {
+    if (props.getProperty(CLE)) return;
+    var tz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+    var sheet = ongletResultats_();
+    var premierId = {};
+    lireLignes_(ONGLET_RESULTATS)
+      .map(function (l, i) {
+        var cle = cleResultat_(l, tz), id = String(l[0]);
+        if (!(cle in premierId)) premierId[cle] = id;
+        return premierId[cle] !== id ? i + 2 : 0;
+      })
+      .filter(Boolean).reverse()
+      .forEach(function (n) { sheet.deleteRow(n); });
+    SpreadsheetApp.flush();
+    props.setProperty(CLE, new Date().toISOString());
+  } finally {
+    verrou.releaseLock();
+  }
+}
+
 /** Ajoute une fois chaque résultat de RESULTATS_INITIAUX (sauf si la rencontre a déjà un résultat). */
 function importerResultatsUneFois_() {
   var props = PropertiesService.getScriptProperties();
@@ -1013,15 +1051,16 @@ function importerResultatsUneFois_() {
     var ss = SpreadsheetApp.getActive();
     var tz = ss.getSpreadsheetTimeZone();
     var sheet = ongletResultats_();
+    // Déjà saisi = même date et même équipe (l'ID peut différer si la rencontre n'est pas dans l'onglet Rencontres).
     var dejaSaisis = {};
-    lireLignes_(ONGLET_RESULTATS).forEach(function (l) { dejaSaisis[String(l[0])] = true; });
+    lireLignes_(ONGLET_RESULTATS).forEach(function (l) { dejaSaisis[cleResultat_(l, tz)] = true; });
     var rencontres = lireLignes_(ONGLET_RENCONTRES);
     restants.forEach(function (r) {
       var trouvee = rencontres.filter(function (l) {
         return l[1] instanceof Date && Utilities.formatDate(l[1], tz, 'yyyy-MM-dd') === r.date && String(l[3]).trim() === r.equipe;
       })[0];
       var id = trouvee && String(trouvee[0]).trim() ? String(trouvee[0]).trim() : nouvelId_();
-      if (dejaSaisis[id]) return;
+      if (dejaSaisis[r.date + '|' + r.equipe]) return;
       var p = r.date.split('-'), date = new Date(+p[0], +p[1] - 1, +p[2]);
       var lignes = r.parties.map(function (x) {
         return [id, date, r.equipe, r.adversaire, r.lieu].concat(x).concat([new Date()]);
@@ -1097,6 +1136,7 @@ function doPost(e) {
 function getDonnees() {
   importerCalendrierUneFois_();
   nettoyerJoueursUneFois_();
+  dedoublonnerResultatsUneFois_();
   importerResultatsUneFois_();
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone();
