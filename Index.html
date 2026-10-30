@@ -693,7 +693,7 @@
       var dernier = (donnees.resultats || [])[0];
       return '<div class="accueil"><h2>Salut ' + esc(moi.split(' ')[0]) + ' 👋</h2><p class="sous">Que veux-tu faire ?</p>' +
         '<div class="tuiles une">' +
-          tuile('matchs', '📅', 'Mes disponibilités', aVenir ? compte(aVenir, 'match', 'matchs') + ' sans réponse de ta part' : 'Matchs à venir, je suis dispo / pas dispo', true) +
+          tuile('matchs', '📅', 'Mes disponibilités', aVenir ? compte(aVenir, 'match', 'matchs') + ' sans réponse de ta part' : 'Matchs à venir, je suis dispo / pas dispo') +
           tuile('resultats', '🏆', 'Résultats championnat', dernier
             ? 'Dernier : ' + dernier.equipe + ' – ' + dernier.adversaire + ' (' + scoreTexte(dernier) + ')'
             : 'Scores des rencontres et des parties') +

@@ -987,24 +987,36 @@ var RESULTATS_INITIAUX = [
       ['Double 1', 'Julian C / Alexandre Y', '13 ; 18', 'David Vaillant / Romain Joubert', '14 ; 15', '3-6 3-6', 'Perdu'],
     ],
   },
+  {
+    date: '2026-10-18', equipe: 'Hommes 2', adversaire: 'St Etienne Palluau 1', lieu: 'Extérieur',
+    parties: [
+      ['Simple 1', 'Adrien G', '30/3', 'Quentin Le Gouedec', '30/1', '0-6 0-6', 'Perdu'],
+      ['Simple 2', 'Adem K', '40', 'Stéphane Arnoult', '30/3', '1-6 4-6', 'Perdu'],
+      ['Simple 3', 'Jonathan R', 'NC', 'Alexis Musset', '30/5', '0-6 4-6', 'Perdu'],
+      ['Simple 4', 'Sofiane M', 'NC', 'Olivier Beaudeau', '40', '4-6 0-6', 'Perdu'],
+      ['Double 1', 'Jonathan R / Sofiane M', '19 ; 19', 'Quentin Le Gouedec / Stéphane Arnoult', '13 ; 15', '5-7 5-7', 'Perdu'],
+    ],
+  },
 ];
 
-/** Ajoute une fois les RESULTATS_INITIAUX (sauf si la rencontre a déjà un résultat). */
+/** Ajoute une fois chaque résultat de RESULTATS_INITIAUX (sauf si la rencontre a déjà un résultat). */
 function importerResultatsUneFois_() {
   var props = PropertiesService.getScriptProperties();
-  var CLE = 'resultats_initiaux_2026_10';
-  if (props.getProperty(CLE)) return;
+  var cle = function (r) { return 'resultat_initial_' + r.date + '_' + r.equipe; };
+  var aFaire = function () { return RESULTATS_INITIAUX.filter(function (r) { return !props.getProperty(cle(r)); }); };
+  if (!aFaire().length) return;
   var verrou = LockService.getScriptLock();
   verrou.waitLock(20000);
   try {
-    if (props.getProperty(CLE)) return;
+    var restants = aFaire();
+    if (!restants.length) return;
     var ss = SpreadsheetApp.getActive();
     var tz = ss.getSpreadsheetTimeZone();
     var sheet = ongletResultats_();
     var dejaSaisis = {};
     lireLignes_(ONGLET_RESULTATS).forEach(function (l) { dejaSaisis[String(l[0])] = true; });
     var rencontres = lireLignes_(ONGLET_RENCONTRES);
-    RESULTATS_INITIAUX.forEach(function (r) {
+    restants.forEach(function (r) {
       var trouvee = rencontres.filter(function (l) {
         return l[1] instanceof Date && Utilities.formatDate(l[1], tz, 'yyyy-MM-dd') === r.date && String(l[3]).trim() === r.equipe;
       })[0];
@@ -1017,7 +1029,7 @@ function importerResultatsUneFois_() {
       sheet.getRange(sheet.getLastRow() + 1, 1, lignes.length, ENTETES_RESULTATS.length).setValues(lignes);
     });
     SpreadsheetApp.flush();
-    props.setProperty(CLE, new Date().toISOString());
+    restants.forEach(function (r) { props.setProperty(cle(r), new Date().toISOString()); });
   } finally {
     verrou.releaseLock();
   }
