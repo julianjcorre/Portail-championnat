@@ -380,6 +380,7 @@
       'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement', 'importerJoueurs', 'definirFige',
       'enregistrerResultat'];
     var surAppsScript = !!(window.google && google.script && google.script.run);
+    var CODE_PAGE = document.currentScript ? document.currentScript.textContent : '';
 
     /** Même usage que google.script.run : serveur().withSuccessHandler(…).withFailureHandler(…).fonction(args). */
     function serveur() {
@@ -2059,13 +2060,37 @@
         .getDonnees();
     }
 
+    /**
+     * Nouvelle version de la page mise en ligne ? On recharge (sinon l'appli installée, restée ouverte
+     * en mémoire, garde l'ancien code : seules les données se mettent à jour). Jamais pendant une saisie.
+     */
+    function verifierNouvelleVersion() {
+      if (surAppsScript || !CODE_PAGE || !window.fetch) return;
+      fetch(location.pathname, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(function (html) {
+          var m = /<script>([\s\S]*)<\/script>\s*<\/body>/.exec(html);
+          if (!m || m[1] === CODE_PAGE) return;
+          if (document.querySelector('#form-rencontre, #form-resultat') || Object.keys(enCours).length) return;
+          try {
+            // Au plus un rechargement par minute (au cas où la page servie changerait à chaque fois).
+            if (Date.now() - (+sessionStorage.getItem('tcb-recharge') || 0) < 60000) return;
+            sessionStorage.setItem('tcb-recharge', String(Date.now()));
+          } catch (e) { return; }
+          location.reload();
+        })
+        .catch(function () {});
+    }
+
     // Rafraîchit quand on revient sur l'onglet du navigateur (réponses des autres, nouvelles dates).
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden && donnees && !Object.keys(enCours).length) charger();
+      if (!document.hidden) verifierNouvelleVersion();
     });
 
     charger();
     verifierCapitaine();
+    verifierNouvelleVersion();
   </script>
 </body>
 </html>
