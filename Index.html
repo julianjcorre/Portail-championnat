@@ -352,6 +352,26 @@
     }
     .form-partie .ligne-score { display: grid; grid-template-columns: 1fr 120px; gap: 8px; }
     .form-partie .etiquette { font-size: 13px; color: var(--doux); font-weight: 600; margin: 4px 0; }
+    /* Classement championnat */
+    .poule-titre { color: var(--doux); font-size: 14px; margin: 0 0 10px; }
+    .classement { width: 100%; border-collapse: collapse; font-size: 15px; }
+    .classement th { text-align: left; font-size: 12px; color: var(--doux); font-weight: 600; padding: 4px 6px; border-bottom: 2px solid var(--ligne); }
+    .classement td { padding: 9px 6px; border-bottom: 1px solid var(--ligne); }
+    .classement tr:last-child td { border-bottom: 0; }
+    .classement .rang { width: 44px; font-weight: 700; color: var(--doux); }
+    .classement .pts { width: 56px; text-align: right; font-weight: 800; }
+    .classement th.pts { text-align: right; }
+    .classement tr.nous td { background: var(--jaune); color: #151515; font-weight: 800; }
+    .classement tr.nous td:first-child { border-radius: 8px 0 0 8px; }
+    .classement tr.nous td:last-child { border-radius: 0 8px 8px 0; }
+    .maj { color: var(--doux); font-size: 13px; margin: 8px 2px 0; }
+    .ligne-poule { display: grid; grid-template-columns: 52px 1fr 64px 40px; gap: 6px; margin-bottom: 6px; }
+    .ligne-poule input {
+      width: 100%; min-height: 44px; border-radius: 10px; border: 2px solid var(--ligne); padding: 0 8px;
+      background: var(--carte); color: var(--texte); font-size: 16px; font-family: inherit;
+    }
+    .ligne-poule button { border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte); color: var(--rouge); font-size: 16px; cursor: pointer; }
+    .entete-poule { display: grid; grid-template-columns: 52px 1fr 64px 40px; gap: 6px; font-size: 12px; color: var(--doux); font-weight: 600; margin-bottom: 4px; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -378,7 +398,7 @@
     var FONCTIONS_SERVEUR = ['getDonnees', 'repondre', 'inscrire', 'demanderLienCapitaine', 'infoCapitaine', 'deconnecterCapitaine',
       'getDonneesCapitaines', 'enregistrerRencontre', 'supprimerRencontre', 'renommerJoueur', 'supprimerJoueur',
       'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement', 'importerJoueurs', 'definirFige',
-      'enregistrerResultat'];
+      'enregistrerResultat', 'enregistrerPoule'];
     var surAppsScript = !!(window.google && google.script && google.script.run);
     var CODE_PAGE = document.currentScript ? document.currentScript.textContent : '';
 
@@ -458,7 +478,7 @@
     var filtreReponse = '';    // '' | 'Présent' | 'Absent' | 'aucune' : joueurs ayant au moins une case de ce type
     // 'accueil' (choix dispos / résultats) | 'matchs' | 'resultats' | 'cap' (accueil capitaines) | 'cap-form' | 'cap-gerer' | …
     // La page s'ouvre toujours sur l'accueil des joueurs ; le lien reçu par mail connecte seulement le capitaine.
-    var VUES_JOUEURS = ['accueil', 'matchs', 'resultats'];
+    var VUES_JOUEURS = ['accueil', 'matchs', 'resultats', 'classement'];
     var vue = 'accueil';
 
     // --- Outils ---
@@ -583,7 +603,8 @@
 
       zoneMoi.hidden = false;
       zoneMoi.innerHTML = esc(moi) + ' · <button id="changer">changer</button>';
-      contenu.innerHTML = vue === 'matchs' ? ecranListe() : vue === 'resultats' ? ecranResultats() : ecranAccueil();
+      contenu.innerHTML = vue === 'matchs' ? ecranListe() : vue === 'resultats' ? ecranResultats() :
+        vue === 'classement' ? ecranClassementChampionnat() : ecranAccueil();
     }
 
     /** Même clé que côté serveur : sans accents, majuscules, points ni espaces. */
@@ -694,10 +715,42 @@
       return '<div class="accueil"><h2>Salut ' + esc(moi.split(' ')[0]) + ' 👋</h2><p class="sous">Que veux-tu faire ?</p>' +
         '<div class="tuiles une">' +
           tuile('matchs', '📅', 'Mes disponibilités', aVenir ? compte(aVenir, 'match', 'matchs') + ' sans réponse de ta part' : 'Matchs à venir, je suis dispo / pas dispo') +
-          tuile('resultats', '🏆', 'Résultats championnat', dernier
+          tuile('resultats', '🎾', 'Résultats matchs', dernier
             ? 'Dernier : ' + dernier.equipe + ' – ' + dernier.adversaire + ' (' + scoreTexte(dernier) + ')'
             : 'Scores des rencontres et des parties') +
+          tuile('classement', '🏆', 'Classement championnat', resumeClassement() || 'Classement des poules Hommes 1 et Hommes 2') +
         '</div></div>' + piedCapitaines();
+    }
+
+    // ======================= Classement championnat =======================
+
+    function rangTexte(n) { return n === 1 ? '1er' : n + 'e'; }
+    /** Notre ligne dans un classement : le club dont le nom contient « Bazog ». */
+    function estNous(club) { return /bazog/i.test(cleNom(club)); }
+    /** « Hommes 1 : 4e · Hommes 2 : 2e » */
+    function resumeClassement() {
+      var poules = donnees.poules || {};
+      return donnees.equipes.map(function (e) {
+        var nous = ((poules[e] || {}).lignes || []).filter(function (l) { return estNous(l.club); })[0];
+        return nous ? e + ' : ' + rangTexte(nous.rang) : '';
+      }).filter(String).join(' · ');
+    }
+
+    function ecranClassementChampionnat() {
+      var poules = donnees.poules || {};
+      return '<div class="cap">' + boutonAccueil() + '<h2>🏆 Classement championnat</h2></div>' +
+        donnees.equipes.map(function (e) {
+          var p = poules[e];
+          var html = '<div class="carte"><p class="jour">' + pastilleEquipe(e) + '</p>';
+          if (!p || !p.lignes.length) return html + '<div class="vide" style="padding:16px 0">Classement pas encore saisi.</div></div>';
+          return html + (p.poule ? '<p class="poule-titre">' + esc(p.poule) + '</p>' : '') +
+            '<table class="classement"><thead><tr><th>Class.</th><th>Équipe</th><th class="pts">Points</th></tr></thead><tbody>' +
+            p.lignes.map(function (l) {
+              return '<tr' + (estNous(l.club) ? ' class="nous"' : '') + '><td class="rang">' + esc(rangTexte(l.rang)) + '</td>' +
+                '<td>' + esc(l.club) + '</td><td class="pts">' + esc(l.points) + '</td></tr>';
+            }).join('') + '</tbody></table>' +
+            (p.majLe ? '<p class="maj">Mis à jour le ' + esc(dateDansPhrase(p.majLe)) + '</p>' : '') + '</div>';
+        }).join('');
     }
 
     function boutonAccueil() { return '<button class="retour" data-vue="accueil">← Accueil</button>'; }
@@ -730,7 +783,7 @@
 
     function ecranResultats() {
       if (donnees.equipes.indexOf(filtreEquipe) === -1) filtreEquipe = '';
-      var html = '<div class="cap">' + boutonAccueil() + '<h2>🏆 Résultats championnat</h2></div>';
+      var html = '<div class="cap">' + boutonAccueil() + '<h2>🎾 Résultats matchs</h2></div>';
       var filtres = '<div class="filtres"><button data-filtre-equipe=""' + (filtreEquipe ? '' : ' class="choisi"') + '>Toutes</button>' +
         donnees.equipes.map(function (e) {
           return '<button data-filtre-equipe="' + esc(e) + '"' + (e === filtreEquipe ? ' class="choisi"' : '') + '>' + pastilleEquipe(e) + '</button>';
@@ -1000,6 +1053,7 @@
       if (vue === 'cap-classements') return ecranClassements();
       if (vue === 'cap-import') return ecranImport();
       if (vue === 'cap-resultats') return selId ? ecranFormResultat() : ecranResultatsCap();
+      if (vue === 'cap-poules') return ecranPoulesCap();
       var nbAttente = donnees.rencontres.filter(function (r) { return r.statut !== 'Validée'; }).length;
       return '<div class="cap"><button class="retour" data-vue="accueil">← Page des joueurs</button><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
@@ -1010,6 +1064,7 @@
           tuile('cap-tableau', '📊', 'Tableau des dispos', 'Vue globale joueurs × matchs') +
           tuile('cap-dispos', '👥', 'Dispos par match', 'Qui vient à chaque match') +
           tuile('cap-resultats', '📋', 'Résultats', resultatsASaisir() ? resultatsASaisir() + ' à saisir' : 'Score des rencontres jouées') +
+          tuile('cap-poules', '🏆', 'Classement championnat', 'Recopier le classement Ten\'Up') +
           tuile('cap-classements', '🎾', 'Classements', classementsAVerifier() ? classementsAVerifier() + ' à vérifier' : 'Tous vérifiés ce mois-ci') +
           tuile('cap-joueurs', '👤', 'Joueurs', sansReponseTotal() ? sansReponseTotal() + ' sans réponse à tout' : 'Renommer, supprimer') +
           tuile('accueil', '🎾', 'Page des joueurs', 'Dispos et résultats') +
@@ -1042,7 +1097,7 @@
 
     function ecranResultatsCap() {
       var html = enTeteCap('📋 Résultats') +
-        '<p class="sous">Touche une rencontre jouée pour saisir ou corriger son score (copie de la feuille de match Ten\'Up). Les joueurs le voient dans 🏆 Résultats championnat.</p>';
+        '<p class="sous">Touche une rencontre jouée pour saisir ou corriger son score (copie de la feuille de match Ten\'Up). Les joueurs le voient dans 🎾 Résultats matchs.</p>';
       var rs = rencontresJouees();
       if (!rs.length) return html + '<div class="vide">Aucune rencontre jouée pour l\'instant.</div></div>';
       return html + '<div class="carte">' + rs.map(function (r) {
@@ -1120,6 +1175,49 @@
         donnees.resultats = resultats;
         messageCap = message;
         naviguer({ vue: 'cap-resultats' }, true);
+      });
+    }
+
+    /** Saisie du classement de la poule de chaque équipe (recopié de Ten'Up). */
+    function ecranPoulesCap() {
+      var poules = donnees.poules || {};
+      var ligne = function (l) {
+        return '<div class="ligne-poule"><input data-p-rang inputmode="numeric" maxlength="2" value="' + esc(l.rang || '') + '">' +
+          '<input data-p-club maxlength="60" placeholder="Nom de l\'équipe" value="' + esc(l.club || '') + '">' +
+          '<input data-p-points inputmode="numeric" maxlength="3" value="' + esc(l.points === undefined ? '' : l.points) + '">' +
+          '<button type="button" data-p-suppr title="Retirer">✕</button></div>';
+      };
+      return enTeteCap('🏆 Classement championnat') +
+        '<p class="sous">Recopie le classement de la poule depuis Ten\'Up après chaque journée. La ligne du TC Bazogeais est surlignée chez les joueurs.</p>' +
+        donnees.equipes.map(function (e) {
+          var p = poules[e] || { poule: '', lignes: [] };
+          var lignes = p.lignes.length ? p.lignes : [{ rang: 1, club: '', points: 0 }];
+          return '<form class="carte" data-form-poule="' + esc(e) + '"><p class="jour">' + pastilleEquipe(e) + '</p>' +
+            '<div class="champ"><label>Phase / poule</label><input data-p-poule maxlength="60" placeholder="ex. Phase préliminaire – Poule C" value="' + esc(p.poule) + '"></div>' +
+            '<div class="entete-poule"><span>Rang</span><span>Équipe</span><span>Points</span><span></span></div>' +
+            '<div data-p-lignes>' + lignes.map(ligne).join('') + '</div>' +
+            '<template>' + ligne({}) + '</template>' +
+            '<button type="button" class="gros second" data-p-ajout>➕ Ajouter une équipe</button>' +
+            '<button type="submit" class="gros">Enregistrer ' + esc(e) + '</button></form>';
+        }).join('') + '</div>';
+    }
+
+    function enregistrerPouleForm(form) {
+      var equipe = form.getAttribute('data-form-poule');
+      var lignes = Array.prototype.map.call(form.querySelectorAll('.ligne-poule'), function (l) {
+        return {
+          rang: l.querySelector('[data-p-rang]').value.trim(),
+          club: l.querySelector('[data-p-club]').value.trim(),
+          points: l.querySelector('[data-p-points]').value.trim(),
+        };
+      }).filter(function (l) { return l.club; });
+      var invalide = lignes.filter(function (l) { return !(+l.rang >= 1); })[0];
+      if (invalide) { afficherErreur('Indique le rang de ' + invalide.club + '.'); return; }
+      appelCap('enregistrerPoule', [equipe, form.querySelector('[data-p-poule]').value, lignes], function (poules) {
+        donnees.poules = poules;
+        messageCap = 'Classement ' + equipe + ' enregistré.';
+        rendre();
+        window.scrollTo(0, 0);
       });
     }
 
@@ -1820,6 +1918,15 @@
         capEmail = (document.getElementById('cap-email') || {}).value || capEmail;
         codeEnvoye = true;
         rendre();
+      } else if (cible.hasAttribute('data-p-ajout')) {
+        var formP = cible.closest('form');
+        formP.querySelector('[data-p-lignes]').appendChild(formP.querySelector('template').content.cloneNode(true));
+        var nouvelles = formP.querySelectorAll('.ligne-poule');
+        var derniere = nouvelles[nouvelles.length - 1];
+        derniere.querySelector('[data-p-rang]').value = nouvelles.length;
+        derniere.querySelector('[data-p-club]').focus();
+      } else if (cible.hasAttribute('data-p-suppr')) {
+        cible.closest('.ligne-poule').remove();
       } else if (cible.hasAttribute('data-res')) {
         naviguer({ vue: 'cap-resultats', sel: cible.getAttribute('data-res') });
       } else if (cible.id === 'effacer-resultat') {
@@ -2006,6 +2113,11 @@
         });
         return;
       }
+      if (e.target.hasAttribute('data-form-poule')) {
+        e.preventDefault();
+        enregistrerPouleForm(e.target);
+        return;
+      }
       if (e.target.id === 'form-resultat') {
         e.preventDefault();
         var parties = lireFormResultat();
@@ -2054,7 +2166,7 @@
         .withSuccessHandler(function (d) {
           donnees = d;
           // Pas de rafraîchissement pendant une saisie (il effacerait les champs).
-          if (!document.getElementById('form-rencontre') && !document.getElementById('form-resultat')) rendre();
+          if (!document.querySelector('#form-rencontre, #form-resultat, [data-form-poule]')) rendre();
         })
         .withFailureHandler(function (err) {
           document.getElementById('contenu').innerHTML =
@@ -2075,7 +2187,7 @@
         .then(function (html) {
           var m = /<script>([\s\S]*)<\/script>\s*<\/body>/.exec(html);
           if (!m || m[1] === CODE_PAGE) return;
-          if (document.querySelector('#form-rencontre, #form-resultat') || Object.keys(enCours).length) return;
+          if (document.querySelector('#form-rencontre, #form-resultat, [data-form-poule]') || Object.keys(enCours).length) return;
           try {
             // Au plus un rechargement par minute (au cas où la page servie changerait à chaque fois).
             if (Date.now() - (+sessionStorage.getItem('tcb-recharge') || 0) < 60000) return;
