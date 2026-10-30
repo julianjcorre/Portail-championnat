@@ -1149,6 +1149,11 @@ var POULES_INITIALES = [
     lignes: [[1, 'TC Les Achards 2', 3], [2, 'Ste Hermine TC 1', 3], [3, 'Atlantique TC 85 3', 1], [4, 'TC Bazogeais 1', 1],
       [5, 'Talmont Tennis Club (TTC) 2', 0], [5, 'TC de Montaigu 4', 0], [5, 'TC de Montaigu 5', 0], [5, 'TC des Clouzeaux 2', 0]],
   },
+  {
+    equipe: 'Hommes 2', poule: 'Phase préliminaire – Poule B',
+    lignes: [[1, 'St Etienne Palluau Tennis 1', 3], [2, 'TC Loulaysien 3', 3], [3, 'TC Bellevigny 2', 3], [4, 'Tennis Club Flavois 1', 1],
+      [5, 'Tennis Rives de l\'Yon 1', 1], [6, 'TC Bazogeais 2', 1], [7, 'TC Macheen 2', 0], [7, 'TC Mouchampais 2', 0]],
+  },
 ];
 
 /** Ajoute une fois chaque classement de POULES_INITIALES (sauf si l'équipe a déjà un classement). */
