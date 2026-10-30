@@ -42,11 +42,15 @@ var ONGLET_RENCONTRES = 'Rencontres';
 var ONGLET_JOUEURS = 'Joueurs';
 var ONGLET_REPONSES = 'Réponses';
 var ONGLET_SELECTION = 'Sélection';
+var ONGLET_RESULTATS = 'Résultats';
 
 var ENTETES_RENCONTRES = ['ID', 'Date', 'Heure', 'Équipe', 'Adversaire', 'Lieu', 'Statut', 'Infos', 'Terrains'];
 var ENTETES_JOUEURS = ['Nom', 'Équipe(s)', 'Inscrit par la page le', 'Classement', 'Classement vérifié le', 'Licence'];
 var ENTETES_REPONSES = ['ID rencontre', 'Nom', 'Réponse', 'Répondu le'];
 var ENTETES_SELECTION = ['ID rencontre', 'Nom', 'Rôle', 'Modifié le'];
+// Une ligne par partie. Plusieurs joueurs (double) : séparés par « / ». Score vu du TCB : « 6-3 4-6 7-6(5) ».
+var ENTETES_RESULTATS = ['ID rencontre', 'Date', 'Équipe', 'Adversaire', 'Lieu', 'Partie', 'Joueur(s) TCB', 'Classement(s) TCB',
+  'Adversaire(s)', 'Classement(s) adv.', 'Score', 'Résultat', 'Modifié le'];
 
 var LIEUX = ['Domicile', 'Extérieur'];
 var TERRAINS = ['1', '2'];
@@ -57,6 +61,9 @@ var CLASSEMENTS = ['NC', '40', '30/5', '30/4', '30/3', '30/2', '30/1', '30', '15
   '5/6', '4/6', '3/6', '2/6', '1/6', '0', '-2/6', '-4/6', '-15', '-30'];
 // Nombre de positions de jeu (n°1, n°2…) dans la sélection d'une équipe.
 var NB_POSITIONS = 4;
+// Parties d'une rencontre, dans l'ordre de la feuille de match.
+var PARTIES = ['Simple 1', 'Simple 2', 'Simple 3', 'Simple 4', 'Double 1'];
+var RESULTATS = ['Gagné', 'Perdu'];
 
 // ---------------------------------------------------------------------------
 // Menu dans la Sheet
@@ -851,6 +858,172 @@ function ligneRencontre_(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Résultats des rencontres
+// ---------------------------------------------------------------------------
+
+/** Onglet Résultats, créé au premier besoin. */
+function ongletResultats_() {
+  var ss = SpreadsheetApp.getActive();
+  var sheet = ss.getSheetByName(ONGLET_RESULTATS);
+  if (!sheet) {
+    sheet = ss.insertSheet(ONGLET_RESULTATS);
+    preparerEntetes_(sheet, ENTETES_RESULTATS);
+    sheet.getRange('B:B').setNumberFormat('dd/mm/yyyy');
+    // Texte : sinon la Sheet transforme « 30/1 » ou « 6-3 » en date.
+    sheet.getRange('H:H').setNumberFormat('@');
+    sheet.getRange('J:K').setNumberFormat('@');
+    sheet.getRange('M:M').setNumberFormat('dd/mm/yyyy hh:mm');
+  }
+  return sheet;
+}
+
+/** Texte d'une cellule « a / b » → ['a', 'b']. */
+function listeDe_(valeur) {
+  return String(valeur == null ? '' : valeur).split('/').map(function (x) { return x.trim(); }).filter(String);
+}
+
+/**
+ * Résultats saisis, la rencontre la plus récente en premier :
+ * [{ id, date, equipe, adversaire, lieu, parties: [{ partie, nous, cltNous, eux, cltEux, score, resultat }] }]
+ */
+function lireResultats_() {
+  var ss = SpreadsheetApp.getActive();
+  if (!ss.getSheetByName(ONGLET_RESULTATS)) return [];
+  var tz = ss.getSpreadsheetTimeZone();
+  var parId = {}, liste = [];
+  lireLignes_(ONGLET_RESULTATS).forEach(function (l) {
+    var id = String(l[0]).trim();
+    if (!id) return;
+    if (!parId[id]) {
+      parId[id] = {
+        id: id,
+        date: l[1] instanceof Date ? Utilities.formatDate(l[1], tz, 'yyyy-MM-dd') : String(l[1]).trim(),
+        equipe: String(l[2]).trim(),
+        adversaire: String(l[3]).trim(),
+        lieu: String(l[4]).trim(),
+        parties: [],
+      };
+      liste.push(parId[id]);
+    }
+    // Classement : une seule valeur par joueur, le « / » de « 30/1 » ne sépare pas.
+    var nous = listeDe_(l[6]), eux = listeDe_(l[8]);
+    parId[id].parties.push({
+      partie: String(l[5]).trim(),
+      nous: nous,
+      cltNous: classementsDe_(l[7], nous.length),
+      eux: eux,
+      cltEux: classementsDe_(l[9], eux.length),
+      score: String(l[10]).trim(),
+      resultat: RESULTATS.indexOf(String(l[11]).trim()) !== -1 ? String(l[11]).trim() : '',
+    });
+  });
+  liste.forEach(function (r) {
+    r.parties.sort(function (a, b) { return rangPartie_(a.partie) - rangPartie_(b.partie); });
+  });
+  return liste.sort(function (a, b) { return b.date.localeCompare(a.date) || a.equipe.localeCompare(b.equipe); });
+}
+
+function rangPartie_(partie) {
+  var i = PARTIES.indexOf(partie);
+  return i === -1 ? PARTIES.length : i;
+}
+
+/** « 30/1 » (1 joueur) ou « 13 ; 18 » (double) → liste de classements. */
+function classementsDe_(valeur, nb) {
+  var texte = String(valeur == null ? '' : valeur).trim();
+  if (nb <= 1) return [texte];
+  return texte.split(';').map(function (x) { return x.trim(); });
+}
+
+/**
+ * Enregistre (remplace) le résultat d'une rencontre. parties : [{ partie, nous: [noms],
+ * cltNous: [..], eux: [noms], cltEux: [..], score, resultat }]. Liste vide = effacer le résultat.
+ */
+function enregistrerResultat(jeton, idRencontre, parties) {
+  verifierCapitaine_(jeton);
+  var ligne = lireLignes_(ONGLET_RENCONTRES).filter(function (l) { return String(l[0]) === String(idRencontre); })[0];
+  if (!ligne) throw new Error('Rencontre introuvable. Rechargez la page.');
+  var texte = function (x, max) { return String(x == null ? '' : x).trim().slice(0, max); };
+  var noms = function (x) { return [].concat(x || []).map(function (n) { return texte(n, 60).replace(/\//g, '-'); }).filter(String).slice(0, 2); };
+  var vues = {};
+  var lignes = [].concat(parties || []).map(function (p) {
+    if (PARTIES.indexOf(p.partie) === -1) throw new Error('Partie inconnue : ' + p.partie);
+    if (vues[p.partie]) throw new Error(p.partie + ' en double.');
+    vues[p.partie] = true;
+    var resultat = String(p.resultat || '');
+    if (resultat && RESULTATS.indexOf(resultat) === -1) throw new Error('Résultat inconnu : ' + resultat);
+    var nous = noms(p.nous), eux = noms(p.eux);
+    var clt = function (liste, nb) { return [].concat(liste || []).slice(0, nb).map(function (c) { return texte(c, 10).replace(/;/g, ''); }).join(' ; '); };
+    return [String(idRencontre), ligne[1], String(ligne[3]).trim(), String(ligne[4]).trim(), String(ligne[5]).trim(), p.partie,
+      nous.join(' / '), clt(p.cltNous, Math.max(nous.length, 1)), eux.join(' / '), clt(p.cltEux, Math.max(eux.length, 1)),
+      texte(p.score, 40), resultat, new Date()];
+  });
+
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var sheet = ongletResultats_();
+    lireLignes_(ONGLET_RESULTATS)
+      .map(function (l, i) { return String(l[0]) === String(idRencontre) ? i + 2 : 0; })
+      .filter(Boolean).reverse()
+      .forEach(function (n) { sheet.deleteRow(n); });
+    if (lignes.length) sheet.getRange(sheet.getLastRow() + 1, 1, lignes.length, ENTETES_RESULTATS.length).setValues(lignes);
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+  return lireResultats_();
+}
+
+// Résultat déjà joué au moment de la mise en ligne de l'écran Résultats (feuille de match Ten'Up).
+var RESULTATS_INITIAUX = [
+  {
+    date: '2026-10-18', equipe: 'Hommes 1', adversaire: 'TC Les Achards 2', lieu: 'Extérieur',
+    parties: [
+      ['Simple 1', 'Anthony P', '30/1', 'Grégory Supiot', '30', '5-7 6-7(4)', 'Perdu'],
+      ['Simple 2', 'Julian C', '30/1', 'Nicolas Ferre', '30/2', '6-3 1-6 5-7', 'Perdu'],
+      ['Simple 3', 'Julien M', '30/2', 'David Vaillant', '30/2', '6-2 6-7(3) 3-6', 'Perdu'],
+      ['Simple 4', 'Alexandre Y', '40', 'Romain Joubert', '30/3', '7-6(5) 0-6 1-6', 'Perdu'],
+      ['Double 1', 'Julian C / Alexandre Y', '13 ; 18', 'David Vaillant / Romain Joubert', '14 ; 15', '3-6 3-6', 'Perdu'],
+    ],
+  },
+];
+
+/** Ajoute une fois les RESULTATS_INITIAUX (sauf si la rencontre a déjà un résultat). */
+function importerResultatsUneFois_() {
+  var props = PropertiesService.getScriptProperties();
+  var CLE = 'resultats_initiaux_2026_10';
+  if (props.getProperty(CLE)) return;
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(20000);
+  try {
+    if (props.getProperty(CLE)) return;
+    var ss = SpreadsheetApp.getActive();
+    var tz = ss.getSpreadsheetTimeZone();
+    var sheet = ongletResultats_();
+    var dejaSaisis = {};
+    lireLignes_(ONGLET_RESULTATS).forEach(function (l) { dejaSaisis[String(l[0])] = true; });
+    var rencontres = lireLignes_(ONGLET_RENCONTRES);
+    RESULTATS_INITIAUX.forEach(function (r) {
+      var trouvee = rencontres.filter(function (l) {
+        return l[1] instanceof Date && Utilities.formatDate(l[1], tz, 'yyyy-MM-dd') === r.date && String(l[3]).trim() === r.equipe;
+      })[0];
+      var id = trouvee && String(trouvee[0]).trim() ? String(trouvee[0]).trim() : nouvelId_();
+      if (dejaSaisis[id]) return;
+      var p = r.date.split('-'), date = new Date(+p[0], +p[1] - 1, +p[2]);
+      var lignes = r.parties.map(function (x) {
+        return [id, date, r.equipe, r.adversaire, r.lieu].concat(x).concat([new Date()]);
+      });
+      sheet.getRange(sheet.getLastRow() + 1, 1, lignes.length, ENTETES_RESULTATS.length).setValues(lignes);
+    });
+    SpreadsheetApp.flush();
+    props.setProperty(CLE, new Date().toISOString());
+  } finally {
+    verrou.releaseLock();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Page web
 // ---------------------------------------------------------------------------
 
@@ -890,6 +1063,7 @@ function doPost(e) {
     definirFige: definirFige,
     connexionCodePerso: connexionCodePerso,
     definirSelection: definirSelection,
+    enregistrerResultat: enregistrerResultat,
   };
   var sortie;
   try {
@@ -911,6 +1085,7 @@ function doPost(e) {
 function getDonnees() {
   importerCalendrierUneFois_();
   nettoyerJoueursUneFois_();
+  importerResultatsUneFois_();
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone();
 
@@ -939,6 +1114,10 @@ function getDonnees() {
     rencontres: rencontres,
     reponses: lireReponses_(),
     selection: lireSelection_(),
+    parties: PARTIES,
+    // Toute la saison (matchs passés compris) : saisie des résultats par les capitaines.
+    calendrier: lireRencontres_(true),
+    resultats: lireResultats_(),
   };
 }
 
@@ -1048,8 +1227,8 @@ function cleNom_(texte) {
 // Lecture de la Sheet
 // ---------------------------------------------------------------------------
 
-/** Rencontres à venir (à partir d'hier), triées par date, heure et équipe. */
-function lireRencontres_() {
+/** Rencontres à venir (à partir d'hier), ou toutes avec toutes = true, triées par date, heure et équipe. */
+function lireRencontres_(toutes) {
   var ss = SpreadsheetApp.getActive();
   var tz = ss.getSpreadsheetTimeZone();
   var hier = new Date();
@@ -1080,7 +1259,7 @@ function lireRencontres_() {
         terrains: TERRAINS.indexOf(String(l[8] == null ? '' : l[8]).trim()) !== -1 ? String(l[8]).trim() : '',
       };
     })
-    .filter(function (r) { return r.date >= depuis && EQUIPES.indexOf(r.equipe) !== -1; })
+    .filter(function (r) { return (toutes || r.date >= depuis) && EQUIPES.indexOf(r.equipe) !== -1; })
     .sort(function (a, b) {
       return (a.date + a.heure + a.equipe).localeCompare(b.date + b.heure + b.equipe);
     });

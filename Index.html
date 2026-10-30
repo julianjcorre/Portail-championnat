@@ -210,6 +210,11 @@
     .grille td.non { background: var(--rouge-clair); }
     .grille td.vide { color: var(--doux); }
     .grille td.hors { color: var(--ligne); }
+    .grille td.case { padding: 0; }
+    .grille td.case button {
+      display: block; width: 100%; min-width: 44px; min-height: 40px; border: 0; background: none;
+      color: inherit; font-size: 14px; font-family: inherit; cursor: pointer;
+    }
     .grille tfoot td { font-weight: 700; border-bottom: 0; }
     .grille tfoot td.total { color: var(--vert); }
     .filtres { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; -webkit-overflow-scrolling: touch; }
@@ -307,6 +312,46 @@
     .secret { -webkit-text-security: disc; text-security: disc; letter-spacing: .2em; }
     .ou { color: var(--doux); font-size: 15px; margin: 22px 0 0; text-align: center; }
     .info { background: var(--vert-clair); color: var(--vert); border-radius: 10px; padding: 10px 12px; font-weight: 600; margin: 12px 0; }
+    /* Résultats */
+    .accueil h2 { margin: 4px 0 4px; font-size: 22px; }
+    .accueil .sous { color: var(--doux); margin: 0 0 16px; font-size: 15px; }
+    .tuiles.une { grid-template-columns: 1fr; }
+    .tuiles.une .tuile { min-height: 96px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; }
+    .bilan-moi { background: var(--noir); color: #fff; border-radius: 12px; padding: 10px 14px; margin: 0 0 14px; font-size: 15px; }
+    .bilan-moi b { color: var(--jaune); }
+    .score-renc { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; margin: 8px 0 4px; }
+    .score-renc .club { font-weight: 700; font-size: 17px; }
+    .score-renc .pts { font-size: 26px; font-weight: 800; min-width: 44px; text-align: center; border-radius: 10px; padding: 2px 8px; background: var(--fond); }
+    .score-renc .pts.gagne { background: var(--vert-clair); color: var(--vert); }
+    .verdict { display: inline-block; font-size: 13px; font-weight: 700; border-radius: 999px; padding: 3px 10px; }
+    .verdict.victoire { background: var(--vert-clair); color: var(--vert); }
+    .verdict.defaite { background: var(--rouge-clair); color: var(--rouge); }
+    .verdict.nul { background: var(--fond); color: var(--doux); }
+    .partie { margin-top: 12px; }
+    .partie-titre { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+    .camp { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; background: var(--fond); }
+    .camp:first-of-type { border-radius: 10px 10px 0 0; border-bottom: 1px solid var(--ligne); }
+    .camp:last-child { border-radius: 0 0 10px 10px; }
+    .camp.gagnant { background: var(--vert-clair); }
+    .camp.gagnant.eux { background: var(--orange-clair); }
+    .camp .joueurs-camp { min-width: 0; font-size: 15px; }
+    .camp .joueurs-camp div { overflow-wrap: anywhere; }
+    .camp .joueurs-camp small { color: var(--doux); font-size: 12px; }
+    .camp .moi-res { font-weight: 800; }
+    .sets { display: flex; gap: 10px; flex: none; font-size: 17px; font-variant-numeric: tabular-nums; }
+    .sets span { min-width: 16px; text-align: center; color: var(--doux); }
+    .sets span.pris { font-weight: 800; color: var(--texte); }
+    .sets sup { font-size: 11px; }
+    .form-partie { border-top: 1px solid var(--ligne); padding-top: 12px; margin-top: 12px; }
+    .form-partie:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+    .form-partie h3 { margin: 0 0 8px; font-size: 17px; }
+    .joueur-clt { display: grid; grid-template-columns: 1fr 84px; gap: 8px; margin-bottom: 8px; }
+    .joueur-clt select, .joueur-clt input, .form-partie .ligne-score input, .form-partie .ligne-score select {
+      width: 100%; min-height: 46px; border-radius: 10px; border: 2px solid var(--ligne); padding: 0 10px;
+      background: var(--carte); color: var(--texte); font-size: 16px; font-family: inherit;
+    }
+    .form-partie .ligne-score { display: grid; grid-template-columns: 1fr 120px; gap: 8px; }
+    .form-partie .etiquette { font-size: 13px; color: var(--doux); font-weight: 600; margin: 4px 0; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -316,7 +361,7 @@
       <h1><img class="logo" alt="TCB" src="data:image/webp;base64,UklGRp4eAABXRUJQVlA4IJIeAACwXwCdASqgAKAAPj0YiUMiIaEX2+5sIAPEtABpzRN/a+1Ayb338vv7D+wHzF1t+m/fr8oeryLd61+6n5v+yfuv/dPe9/lPYJ+dP9R7gX6c/6r+3f4f9fPh2/QD3C/1D/e/3T2AfzH+w/87/Le9l6DPQD/mf9j6xb9wPYE/Z31a/9n/3/8p8F/7V/tF8Cv84/sv/P/P/uAOpX6mf4ftR/vn5Aecv4r8p/XfyH9W3Jn1Nf0PoN/GfsH99/un7f/3X9yvif/Q+BPwE/ofzE/t/yC/iv8j/uf5f/4L9sfp6+M7EzXP8x/vPUC9mPnX+f/wP7pf4/4k/eP8n+W/uF9jP9n7gH81/qX+q/uP7qf4v57/2Xgb/gf8x7AP9A/sX+9/w/7mf5j6Yf4b/g/5j/Pf+b/M+1D87/s/+0/wf+W/7n+O////u/Qb+Sfz//N/23/Of9n/Ef///6fbT7Bf2M9i/9W/v/dQWpoi2mHVw5TsFh30Te4xNNuHGkgDFeXLge2yzHba6nnwEE7Odf0j8pnh0KJwmGdPqv1cO2A9RbqNaRqRY7K74UMFDUPYeZmFhHIXuiEgsSv1lV6SAJT0LgD5x2/khijUELPGioR6wrl289e8bj3rx4o2EGR4dnisC2PHB6J9TZ327xU8zk0s8r29DoadDP0EcJMcVtdAlvHcWJlVLc2Br/z7NIlxXAEGbjN+eodGNzGPNaZRxiuVLx8ui26Q4MhCNP7V7CCAUsYuFlUAS/0GEvx1i/89JVQLWAzwh4DEe7/unNTnQ7X37GWS7cw9ei3akm/d6MDSJffO8SZKdkWJiEDWSeXR8OwwBFDNyaLKUmxPOn6jhsesFRpPWRndUYsvfkb6+tK8gRulpnuj2wtifs+T5Vm43Xstwb1q0z648HfeKZKF++cv3rI5s572RrrjW46mHwqh73tr19qbJ0IsppR+Dj01ZFcOZ31UZcXPjsC2Yorau4FtwGUlko805ZFJfAkc/Ce+WWHzIscyCg8Ua6E8neyFmXvwnatBMFVHMqLiN3AA/v89YVSia13e2vukkh4GrPgdGWNjb5txslEI/zl5KBB1aXbvVZgUGl+5CSGgx385dqaO2NZz0TDw0uWM/JinT+YnaBW9iWsdIYxraAOZrQcL3wqQJ8RHpctxlhqFWRCwaDmzoG/KB7VsQ9nfU1C7XOA9Y0Sv/Xpx4//Gp1z1geDHwmvyXw2wrcbx/n4oEFiNkjlrQ6g52rIGbHo+X8s5648XtbYepIiwBog+Kyf29xDoGnbIkyQ79Es376aq44JX1mIn9wPOdwuS7SesV0qPfvU1qpX/KhWLj0DRrKH+nfjknSSRrWYjQouX36s+2u/RvVlefFIdBfVu3hSIgBEYiSe8x/CD5O77XwjZydcU1fQGiZrX53WMJquGnhcTtsE4x+aisA5AvbQBy3y8hHQpLJuKhIX2SP1OI2fZ+npnvo1+yjZ7tKknJZSqokhQvTxRQYpHKLtBr838toTGIpQVDGNKz8fC6in+rocZwV/sK+WJCrOqPtFl372QheEUv2zuWRu7TncnvfgLG25MZXDPoFwji1k8BCgOVWjRwQAmktjgU0hhEcECeQbTvH4PO6b1Aru6VUqeEUug+3uD2H+0oZrt+54GhfKeldcrUPRZj3CoHXMOQlQn0Qzx8chbTjLpjqLxrFASLMZXDRbOe7QSiTrUKSv97hgAfDvY/T5OWQMxV5Dg8ZZGHxcOEadHe+q80LvuHRBYGixd/1HERE8eXEmNCjQ+c6X7KyWwhmuKYqUPB1chc+mJd/XFe0AdJib7pYb3VgatpZCiL6E0phPYTLMvWtlw6drdpXxp4fXm0eStb+CEyhz+7TkyAe1DED2xnykELu94tDjj77IowN8Puzw9aKQR50ClNrz6oaBGeKnzYbleihno9sE/B4SNmJEGCFnK0XBLnBrxUZXFActML1oYWc4gRbwJm17Plmxf0dKMsHNZtkxvWZHg5QT4ww0mkdo6G4YKO1BrZkxy+uptUg8PNTLbS7gxj45G6JQstHn5WKx/pJVVnNCORn/PMMloDg1SUg7ZaoeY0tE3AlC8rJEmErAlyoAqBW1W3cexz/cCwRZgRiWvBqyZPsE0KPUk/LIyqnJy0dIPuDCQFFkaVYuWSpR83U7qnbuz47ks/jWp8ihQUOtuFICPo8W96/FOGRUyqslCtmIQnefNngzQ2yBSw97W4Uf9jW1/mntzHRE8o8Sa0pj/6VlBR0rH8zVUAREFklVYgengAM6SqsJeq6Sjcv7EUK5qdfu35YJq+z0miv17kChTnHiRRyvyGBgxXQ8Ax4XPPbQ6Ly2IZ4KuZp903RvAOOcIQ/jdZ98IQneGPcILSiRKs6WzIpaqJ8LB3QqxBcX3rWGSY/YGd3kALLIZ8RL7NQT8wluZQbBtcT1jdd+RQruZvmBCgbaX89RQWwhBkNCILoYDCkD2E2q/w62/bn2fyMx3gj/B4snxQMyRmVtbxBdhdLGmmx+3aCHj/vXbNy2EkAk2IRpG6YUi3NF5oBRfF6b8OrciIJXFrvsVjVE568/kqbNFaIGQcVhR73oaH1X/svd3r4/ENVWdbNnaW5qRUndaJBlSeSjWN5KYzn5CDyOpNuJmmVMFOSxkG5jaYK8JxwmMJHCrwyJMspfsHgxiybdnEPqyjLgvL7o0UaiwToW1qnxBGFOKnOUpy/3kZnLu7wGaVJJ8Ue6qILunUENyPqoZchyt1vndZnAt1/V7/NRPGevkakWwGxSzbhxZ2U66DG864ETuyJ6f3nX2noKpWmxlYgf80+zY6MmMRlecnBV8MmcmFAAsASahRbFsOU6WOVFMn+GVBlZVM5QFzoY/PWQDjJw9N96Mm0oqQg0mzKUT5CCDK/Zc3pmkKit8BbPskCpxMwFnKG3qhbdwZUpwA9ceM5C17MqFkMw5uIbx+4F68hqCHIZ+gWp25BBZvG7cSuwMQxo3quigHNKzJWAYWMEEQILMqi/TKqEUxk6Ph4fD9qUZxLA+evE3RT/V+vqrsl4MEYw6Wif0S/E43HPem5BF6e5IJjH04yyp0ICHW33/M8aizNeTtwabx3JJpUrbwlD0LwDBXB52p1Csr0R2X5EyUIoc8J53UUdYAA2xgwEM85FgCrKUIiJowuGgQMGtQbWTmv9x9bnuw3Pse6bR4N9p8YQde2JBBwtPpk4xr4/P6zu/13B8VvGrLeHpysI28oMw4ls8trin/hWPC3sHNZRDBYBqJgtxI+/7jv4SYe4F1b+wi6K4L1hKYU7BzflKCldwTzTzU7hcidBsZRjF9Fta7f7+eSvJ4tQuImujHXehGow+ih+iQkgG7vyEkHuMN12x8HnHgVX5rkD4HuFconTpCbmpy6x3yUhkVaMGRAq4NdM6oqltJttx8sfdL/tLdtcNSLFVVUS6cGO1io/dLg+iEiz8ddWUIFEqtHjsBrHirUC7oz9yFCU2cIdssBP3GyMrXr2mlKHmAxFlmneTKMdW9gCk032fu39xsaKnzoKuwZDRIbP0Tno2med5zDFvN8X7JrUeMAIwezwl+SKR64nwe0FfgxjSgm6NOwITq+VkhGlEAHun8NrYkn2IlfEl+ix/dw6SsAyZPc3udVzOdE9deXMcGub4DJYowYIdzW81Eb1H30ka8fZb/QiumXpZ7wDEWnJ6dZEOoVwPek8J+pwfV/LowkftWc2FmDz8yfD5qq6V8KfUkm7cdkOPJw8Y72F8Y2SXpgxvfJ7uonfvBmu8TT6OjjC3R8NLZWm4zMFTgktsWHM6xbIzkk+vTgdcM28bkIOZ1ZhT/eqd3sufo+bQe/WCjd3BnFyTes7Xnm8/LZTeu9EK+pe1ikesH4h34Rwt00gnO1O4YcfwiDro2oNQ5kL85t1o6xCt5lSrj1fnPVrtIPqW6hq53m79v5UID1K3XZTFMdKaq7rVrWdrgiFkmNZ3Q1VFVbsvkNJJeLNFzDfQPBUBtFo4glB5xUcHrGuXusLYoXT+bNMhOk9hLwuHs2e1XkSDHAcp0+QioBIyDoBuaXlxheIZFGTnrHwS6wY6UnU86yYydeKBUomT0eCc7Cz68u1BVkpV2cEzE+todwhYYWy6UWuYiD7y/MKhjrDLvRXcwZEa55YYed7CHizdDSgD0AXU7Jlfbi6ZPLiw10Sao9kI7htDLM+wiWc0KJGkFVTSeR8HtsgVlQkXHRhjqhz/vETTcLQBX1gsLKEnRm4CgCH1pZj+weNml7t101rtVHQi+iYCzPRIQDb9MoHb2Lilh9FbQ6vmBtklVkJFSSWa7a98sJeqKwAGq0hzhFhyvXZP5qDDKbkFVxWyglr8ZE/MCqtNrlvMG2/WVUREwKRmLqnglOFPBBFf45bbKx+MNFg3gbXQUvr0ZkaONx2xbakJtlwUJdVlfOMufJxQ9REjrfL2boQQziTtFwbqsiv9i+OLM1RdK+l0FXAph4ARFhqEPNCXwW6uYwfIR8a4b9N17tV9tw/SJgzDxAaBlYSDh+l1GO8dvajbbQNd0+EnSM9GNKE2nRvz7eXIpwLc9QGexda+xxS29kpxx5/A27USO1le1sxrYQESm4wp8MZZNbfsTeuKCr61ho2y9DTNo91S6rcdvk3AYAcufYiURwvEVjvNy5UzhUreWKROE4fT0uwvh4pJZdvYfZAYizr+JHMNzox2OUXGqgdwUHlZRzbQNSoKqnoU/NCqicZRaDw3JOcGCoSDTSk6Sv3wNjoprsOccL2LCLrY6A3QEhH7Dw18heRJhtR5NLiFB7LzGdTxbBw0c40l7LzjQ6lkdRkGO/Bm4AmCQXCgcOY72JOG1kPc2s1i+UER7NuD3ZDKuNwDQoYLU7+usc7LHv37I7y0fRuMzRK2A/zZuXNvItO+RiaMNBA1wc3WENuECJdqSU3RqgSxtEUpaUsLNn7wesPtEHCSJJbCobzdVkOuzlThmNzNMwKwwxWeKba9b/91w1mOFlfI2pZaUU1aZN2Vg4FufvVbyfN3p8yAZnE+Oo0Oz/7WLFUKLb0YJ/BBxv6HiKsU8R4KkQV9LgL4Fq2kV0E6k23TC/OeMKzmoPueLu7+UaHRHwVRqpRNAdlXRbmLrEmZTQjHEJ8kl3rxF+YQX/34xzpH8w538YV0HdCmxbSPkKDUwzVPTc0OYksvb4UrciZfF6OdThtsCMJpAaWs2QZCXigVX0p7JxNh2wvCTfQ6M88Mzzy2lPAcq0iiTlQ/JwYlSp1UIeQFw5uliqa10X8w5iJNGREvCig17jYUAZdOXdNAWpBT7y7D/IbJkjvzJA1zQsyxh2xYQLLBt9feezkFxGscREYsyKrzLz8a89pWjL6obUnhOLWaSc+uRWW/IXO9074Ah+ZcChHM8uEFCle2PYAO00zUM3X+uFzrXQSCRMIpDyYUdiWC23iePi6G7xHQ0wHEnge9YpxlnqXcrb1Cavi18AyWTe1YgsVdExDj+kBh8GqFglGSeE5uBoLYcwJtcx9SXXWvCL+x0pa9Wzkr2vO2xwb22CYauV61qtm0zhpd94TCM/V31JKBLQe0dPcaalmOLEbu5Fl/5sLCMAFHslcMplu10HrwTpUUjTZd2ps1UQkgCgQ2ap+rj0acuV5opSZVIEVuqLX4QZIcKNppOiy2jmwVlYSGACZ73kyousAE2SM50AyQpzzQuOgAvrZETq4Yy8feA79soWS6PwN1IrePgbqRrOA24dF9Eaca2jeSGNHXXcLfgtSKTKu+D0I0+REbaQ84Qv8tW6YLoRSZTGBmpH1FDl/SxVAl1s1adMnq/JOlXkGf4yhezu534mUS6lEYyThK7lybrXVdq7vilbJty/Nj7EI6Sff+M5ClPnaWAYgPpcifDSoBYPwbJ1V6xN0iABiDdAPDK88LIX4KgNELcfYWB6Q4xAuB2++yXq7SLth/i6FiXDLSYTEpB1rYyK7H5ZAEejWwhb/8GZ+GWvSEiZk1iRosfc83VdVKc1wcFr78F9q6V3Co10Jgo7RedRwy0bANdIqhz4nYX4lwN1ClLK30hefX57OGPe3+SENAIibd1abk0sk/FLf8kWXHL+aNoZ+xMi5lZ/8X74BYeKoh0d1SI9SqeNgdMJy9vo8omfDN25EUUZsbCbkf0t38pJTOWefnjh2lcfrK/Www+1Ys91exa9INBQ2+X5eBUpAv/0EmJyk9oBwIuN8WSepNq51Y9mQi9+9ugbayBvJOzbLHCKZ2Q3c6mqIp1AYZhM2KLfOOILZ6+CMDhjGIHriJjfK8vkYGZxMVNpOz6LMQW2q1y51QlBieJfdTxIvzpbHvG0Gbg0n3aqHdjje33K3nxH5Vmq2VncDMMIfi8s01OjuY2TT/vgesiwtgL8ijffgpN3tM/qVMV23CCRM82fhPuwsph8c5zBb0or6sUmYUPlGM48RkIF3cvSrvNHuE3bFdh+6oZA3C79K9KDvBusVmwc35ex2JgHBwJt7YLT5Lb76Qi15oWhDoJVyh5GMyNLgZr2eliF6SkgaeVTy3lQ/0Kbyea0/2YG4kDRlkc5CeHJaJn8iAvRhydPGMrTm3+nXqr2HstEgcAzpnm/51gebhMPD2edkpnoY7VjBOh/ueDilGVm9ZHmccmKdUlCm/c7hEtCLqIbtmJsthgcsQr8P26Ytfld4Kw9mb5LaMnXtIkv1Euq7hP2JiOgiUeSHJMqpKJVWDakod3eDM2vi1UP5Fm6L4P/Jee+YKMaYjrFLh/N7m3IBi5I1eW9ekmgNdRCbtJJyaqODVb/T5OQlIw+nt2cHDeZeBlHZtkuWRGFmusEeXn3YvHYyKLqD7CWsqgDbTyKfnam84mF/1w5/DQyvmMzTPHPB8gzcKHcaqZQcYYOK4ohAhi0jXGiAFIVifYWEeKECVcGcV6OvJFOg9KFsfy6PNGEHze/MRrYTu5TcDaGbd/N4qsagCfW0/mOBvZVtDD5pc4WkEfQWsDgtbRAwtfIji/wLkx4D5DLK9pwF09Zh8Qwd6MLgTOfKnsT8hbpXzHGWfkwXYo5uA3xRfyop2TnOlQ+7M+HwddnVkLy2PdVuSN8ATFtDwbZ3+jFtr6AW/3t0iPNhtoVw2A23/354CvZ3E63r1UZUTbrmGgmzBjNUKogwihk7QS85RzgHz2FiUmkW3kejhWloJnx7FaAn7+xpmP0/cProsurE7uxQfFm0fzrI69QTWloFDJ5zXCUN/0Cxvm68ImbxGo5/+AJOb+ajXBFKRyqyIvVx+htCBDMOjMjFRtoBzHBlLDHU6mkrmyCkyZjFxLvqAO7JKlDxJ/0wnaQmFsJw9Gx9gdP0X5IICvCRdWUfsdTiFZdZlmBsnw1M6+vY39hBpEMea5Oue3IrKXW2eJ5rC8IJc96raw/vKfkOiM51mb3Qw1zvi3wc9rpVLdISmx14Mi33Qh3U0f+8brcjH/eBS34GzJlEr6saa7N/766QhluvPJX6xOExSZbttB/RZtHKLdK0Ez+CupCPTggd3MSSAsuExrlIKFqGuOKc/cMq/37zPzjjLFcFCclO0nOgI5VdItYso5RiwXexaIlN1nPN2WUmCwEEiCF21K+cPwuDZsSEBtbFTQax0N59mhqxc2MDtYYt6o+5cYirI0Rsb7o/J+06G5DW9W/wh1Fqv0vLtXDWaDHpcku0aNN4PQHRAKWigXaaKFkjqxpY5ZFWo9Dsui8/lRQxHD5qKZ6/JWh2T458zBhkMTQHS9d8jZJrLyXRjVdvEuRZb0UrTT51h8FyeF3VBkQsZf3LeRpGgyarwg0AZBUIeEkG9Ak5/ecwsVP0frICNbXl6xeDFov0q77tQXq8TN0B4AcZiqxe85ueQntR8x9pOtjdj9YX+28yyfr6QXXrYRCpCjKGUwOlWNvYoEGxD3Qn6hv/TzV/JXECfYM7ohYw3nVrYnw+uRH+JbMTUts67JnhgZlgC/5KAA5/ZtKSXtUhLtBHi608XjhzLaLRJuTZstsYMCp/sdwZYYlZ6/KPwD7JpRV/t1zk8BHF347+xWI3qZAbwehzLV9P6p95fC7qaWVLEJoRH+s9KVY6khbRx9TDh2yXWuHFINSCvcWqWRMMkRuxaT3+vEZwXaq6JW4KAjSx+8yKMNbu+/Q+tEaYQBiVppnb6fVp/4Q+jb3aqaz1yZdMv6p86OsUf10SZ2mXEHYOpToDPeYMUDdr5ziZBTzisX3FEQlImUWIItdxrSRrzUIsg6I+MrkLC8WLD7o28B//qLYgDv5/iWEtAvEal8xDb2/LA9aPGA3zaFTs2SZcYGEHEZU44rbs3LPhmuRn0AY7tyEe+G8C+E4qLiRjf2X0ZE+gwllpy9w1vRAZnh4L3OxHPeA+/mUFaJSAFAbnd+zocPMG8QavfCnt4lvqjffaS1nPfwx80oTb3uFP/CKnTZPOp2SltoUauBh3mvBHwL3gN/M49hZSB+mr+g1iWM/ou7Fbq9h0fReSf/ESN6mBZbbF/n6QpXXDgY0ipibVgU2d2z+YDm29eO/q+Me4QeiCIIw8BXcHnfYve/Q7lc4MKPPVqOvdNuG995YG7M9QSFm5wZO3lnf/HLgMuaoLXM7E20UzxZCvCljO7ROehA0eyOntreMgiNy37mdYELOETmt3lObIGOY1bozmMD+4YaGtw0/nQiE9F9hRuJERY2QzWVuorKoLfKu9PHShmLYKaThs+HMiRxqHOmebWCpweoSNljf+Hgeim8Bk6yHZ2WJYh7ufmfyg1Jd08bs+PcJi/w5nPFNhGA6pQbDZfzatGAFlyKS/9jV6WJIM7qyr6g8B267fH/MUmAcbcvQDG7mkFTRS6VD/GUwQshbgAzoacKc+z1ACq6XPPGf+VrqN4h4hWCTvIfjuQ64oZCXParhZW8kikgwl/gqInCglxguObWQzlgZYMOeCt8Yi6mud7Hyz2eaopc3r79qe1LErymxB6LI8+54s6VDBio7yGmSN/5rpx6X0ns+YDh8R3X7iBNJeEW3kMOLoKZZzJUYeP8ZaLfh3TcKHD2j/amnpGfv5gFO5W4ukXIpVVpR99xyI0zKlInGKZrdmSFWcMyfJNhyiuVWO0ntGCEoc/RaIg8X7y6Ws5C58hH4PgDJreYijKa+Aj6MjU4/LbiE9gDFjqJHlJJpGWmbLhZ0vvDTVojLzQNOc7OOqdlcZ1DWUBZq1k5OJdLqu7tj/IqaCP6TMR0Cc9fX14cEITgs0wuqol7ChrjoALMQUaGZEfUy06WLNT53cLgLDpWj2V3WtPoIp1UdFj/xeQmaeG9L3OUpicGhnfZUHVSlBmpV35Vc4WJYqOCCpE0+54BxcyhWl7FTYXcW/5nPlGPGIosKZzu7mBTtjC1aOKjtq6HdF343AJd/1w+u60+X1piDFOT/wrTa/KeAWBlsp1o/6cjolb3AfOZqiI3Eh7RrknjEP4Q8U0wmMYCnW8CVI96wfGsBQcZ9nlvvqEzNMDfJwIulV27rBjIGC0gfpxt/8vND1Vq8ypJYvZgaSzDPPOR0yPQ+6+GV2njJDlZcbXEsPRgU1wPkQZYcbACe39LwG2ypF632IHiPM/Ba8BUcO4oEqBbSKw4XnKpTAQo4cySeKZXVioFwAUq734/hx2yDN/D3LM4pH8P931YENuuW7fXbxu+G545/X/th3TXJOpRXkAYAmSyNDbUKhNWq6g7JOfKpspPM6dQsK8h6WbwZoDvkHlBmOabRNmj35h1CxoUThhGTY6Ak7H+hDk8OA3NZfA/QgINtdzXOOlHVOhHLjEqRjcDzHOfkwvvPq6vQc20qg0Wn71yQ841LODU7kdXzkZEPlll/h58szs2ON5etMICarWkaVe/1VzqKsMBF7En29W2xT3BWyWWxAHt614b0xZpZIb2yCcDb8mmZvMnefYPKXh2eV4Rvq5f3VjyN6MyoxX+H4bvE4eHlCu5fwCQHNh9OrXvpyfEdPWp7JFVaXYbfA7IEYXmqP2D2OnIWTNE7YJM9rH2E3OzfdTjkGkUoPflCTYP1igxCqBP2cqzR2TlMlk1shyLe1kPjM/WYIuzBmpD8RsRZO3MBKndyFxVQBZ9SXldBdlqsJL4lOyhj5oLMyvvGgGV7zXftIyWBG86bp77YZ5oxySiMNbSFLmL1evbNsKb/PGbiEF8K2Zc4d9YAnLp890Wt5um7fkGzM4xwh1vYhLsgMEXXjewpj8VXlYJELxJykXzVQ/jIJd/nEx/5hCZcvjQiXxusCdzPdEH4iRBPlKOzvpwiy3xQ4RpB5TsPC56rezpz2f+j1T6LH71YTaDZcdNnBGXjQaTsVqIZBqJZrT0Z13a17J8RCEFbqtGKw64BRJkHQJiLvM2tkl//qpiO4Fb7kki+v2U3LeW7+I7eNEAp+Dgv2KBiwEH4GSvZlK4/cvXoSQBxk5y4t2JfiRwCibJLzVIyrjLoVXOI7iqEOvGEBPO6dtnkNbc0li62KiarHl0AzumjgBnaAAAA=="><span>TC Bazoges – <span class="sous-titre">Championnat</span></span></h1>
       <div class="moi" id="moi" hidden></div>
       <div class="droite">
-        <button class="bouton-cap" id="bouton-joueur" data-vue="matchs" title="Mes dispos (page des joueurs)" hidden>👤</button>
+        <button class="bouton-cap" id="bouton-joueur" data-vue="accueil" title="Page des joueurs" hidden>👤</button>
         <button class="bouton-cap" id="bouton-cap" data-vue="cap" title="Espace capitaines" hidden>⚙️</button>
       </div>
     </div>
@@ -332,7 +377,8 @@
     var URL_API = 'https://script.google.com/macros/s/AKfycbw6zkDi717zVCuxSCE4YUY7KYUMTSJroeg_sjgdOOa3m1MFUf7jbcJBKdRbhFOrDKZd5g/exec';
     var FONCTIONS_SERVEUR = ['getDonnees', 'repondre', 'inscrire', 'demanderLienCapitaine', 'infoCapitaine', 'deconnecterCapitaine',
       'getDonneesCapitaines', 'enregistrerRencontre', 'supprimerRencontre', 'renommerJoueur', 'supprimerJoueur',
-      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement', 'importerJoueurs', 'definirFige'];
+      'validerCodeCapitaine', 'definirSelection', 'definirCodePerso', 'connexionCodePerso', 'definirClassement', 'importerJoueurs', 'definirFige',
+      'enregistrerResultat'];
     var surAppsScript = !!(window.google && google.script && google.script.run);
 
     /** Même usage que google.script.run : serveur().withSuccessHandler(…).withFailureHandler(…).fonction(args). */
@@ -402,16 +448,17 @@
     var capEmail = '';         // adresse saisie à la connexion capitaine
     var codeEnvoye = false;    // le mail avec le code est parti : afficher la saisie du code
     var modeMail = false;      // connexion par code reçu par mail (1re fois ou code capitaine oublié)
-    var selId = '';            // rencontre ouverte dans l'écran Sélection
+    var selId = '';            // rencontre ouverte dans l'écran Sélection (ou Résultat, côté capitaines)
     var selEnCours = 0;        // enregistrements de sélection en attente de réponse
     var invitationInstall = null; // évènement beforeinstallprompt (Android / ordinateur)
     var CLE_FILTRE_EQUIPE = 'tcb-championnat-equipe';
     var filtreEquipe = (function () { try { return localStorage.getItem(CLE_FILTRE_EQUIPE) || ''; } catch (e) { return ''; } })();
     var filtreJour = '';       // journée affichée dans le tableau des dispos ('' = toutes)
     var filtreReponse = '';    // '' | 'Présent' | 'Absent' | 'aucune' : joueurs ayant au moins une case de ce type
-    // 'matchs' | 'cap' (accueil) | 'cap-form' | 'cap-gerer' | 'cap-dispos'
-    // La page s'ouvre toujours sur les matchs ; le lien reçu par mail connecte seulement le capitaine.
-    var vue = 'matchs';
+    // 'accueil' (choix dispos / résultats) | 'matchs' | 'resultats' | 'cap' (accueil capitaines) | 'cap-form' | 'cap-gerer' | …
+    // La page s'ouvre toujours sur l'accueil des joueurs ; le lien reçu par mail connecte seulement le capitaine.
+    var VUES_JOUEURS = ['accueil', 'matchs', 'resultats'];
+    var vue = 'accueil';
 
     // --- Outils ---
     function esc(t) {
@@ -508,7 +555,7 @@
       var boutonJoueur = document.getElementById('bouton-joueur'), boutonCap = document.getElementById('bouton-cap');
       boutonJoueur.hidden = boutonCap.hidden = !capitaine;
       document.querySelector('header').classList.toggle('cap-connecte', !!capitaine);
-      boutonJoueur.classList.toggle('actif', vue === 'matchs');
+      boutonJoueur.classList.toggle('actif', VUES_JOUEURS.indexOf(vue) !== -1);
       boutonCap.classList.toggle('actif', vue.indexOf('cap') === 0);
       if (vue === 'cap-form') lireBrouillon();
 
@@ -517,9 +564,12 @@
         contenu.innerHTML = ecranInstaller();
         return;
       }
-      if (vue !== 'matchs') {
+      if (VUES_JOUEURS.indexOf(vue) === -1) {
         zoneMoi.hidden = true;
+        var defile = contenu.querySelector('.defile'), gauche = defile ? defile.scrollLeft : 0;
         contenu.innerHTML = ecranCapitaine();
+        defile = contenu.querySelector('.defile');
+        if (defile && gauche) defile.scrollLeft = gauche;
         return;
       }
 
@@ -532,7 +582,7 @@
 
       zoneMoi.hidden = false;
       zoneMoi.innerHTML = esc(moi) + ' · <button id="changer">changer</button>';
-      contenu.innerHTML = ecranListe();
+      contenu.innerHTML = vue === 'matchs' ? ecranListe() : vue === 'resultats' ? ecranResultats() : ecranAccueil();
     }
 
     /** Même clé que côté serveur : sans accents, majuscules, points ni espaces. */
@@ -601,7 +651,7 @@
 
     function ecranInstaller() {
       var iphone = surIphone(), nav = navigateur();
-      return '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button>' +
+      return '<div class="cap"><button class="retour" data-vue="accueil">← Accueil</button>' +
         '<h2>📲 Installer l\'appli</h2><p class="sous">L\'icône du club apparaîtra sur ton téléphone, comme une vraie appli.</p>' +
         (invitationInstall ? '<button class="gros" id="installer-direct" style="margin:0 0 16px">📲 Installer maintenant</button>' +
           '<p class="sous">Si rien ne se passe ou si l\'icône n\'apparaît pas, suis les étapes ci-dessous.</p>' : '') +
@@ -636,12 +686,108 @@
       navigator.serviceWorker.register('sw.js').catch(function () {});
     }
 
+    /** Après le choix du nom : donner ses dispos ou voir les résultats. */
+    function ecranAccueil() {
+      var aVenir = donnees.rencontres.filter(function (r) { return !reponseDe(r.id, moi) && joueur(moi).equipes.indexOf(r.equipe) !== -1; }).length;
+      var dernier = (donnees.resultats || [])[0];
+      return '<div class="accueil"><h2>Salut ' + esc(moi.split(' ')[0]) + ' 👋</h2><p class="sous">Que veux-tu faire ?</p>' +
+        '<div class="tuiles une">' +
+          tuile('matchs', '📅', 'Mes disponibilités', aVenir ? compte(aVenir, 'match', 'matchs') + ' sans réponse de ta part' : 'Matchs à venir, je suis dispo / pas dispo', true) +
+          tuile('resultats', '🏆', 'Résultats championnat', dernier
+            ? 'Dernier : ' + dernier.equipe + ' – ' + dernier.adversaire + ' (' + scoreTexte(dernier) + ')'
+            : 'Scores des rencontres et des parties') +
+        '</div></div>' + piedCapitaines();
+    }
+
+    function boutonAccueil() { return '<button class="retour" data-vue="accueil">← Accueil</button>'; }
+
+    // ======================= Résultats =======================
+
+    /** « 6-3 4-6 7-6(5) » (vu du TCB) → [{ nous: 6, eux: 3, tb: '' }, …] ; [] si le score ne se lit pas. */
+    function setsDe(score) {
+      var sets = [];
+      var ok = String(score || '').trim().split(/\s+/).every(function (x) {
+        var m = /^(\d{1,2})[-\/](\d{1,2})(?:\((\d{1,2})\))?$/.exec(x);
+        if (m) sets.push({ nous: +m[1], eux: +m[2], tb: m[3] || '' });
+        return !!m;
+      });
+      return ok ? sets : [];
+    }
+    /** 'Gagné' | 'Perdu' | '' : résultat saisi, sinon déduit du score (sets gagnés). */
+    function issuePartie(p) {
+      if (p.resultat) return p.resultat;
+      var g = 0, d = 0;
+      setsDe(p.score).forEach(function (s) { if (s.nous > s.eux) g++; else if (s.eux > s.nous) d++; });
+      return g > d ? 'Gagné' : d > g ? 'Perdu' : '';
+    }
+    function pointsRencontre(res) {
+      var nous = 0, eux = 0;
+      res.parties.forEach(function (p) { var i = issuePartie(p); if (i === 'Gagné') nous++; else if (i === 'Perdu') eux++; });
+      return { nous: nous, eux: eux };
+    }
+    function scoreTexte(res) { var pts = pointsRencontre(res); return pts.nous + '-' + pts.eux; }
+
+    function ecranResultats() {
+      if (donnees.equipes.indexOf(filtreEquipe) === -1) filtreEquipe = '';
+      var html = '<div class="cap">' + boutonAccueil() + '<h2>🏆 Résultats championnat</h2></div>';
+      var filtres = '<div class="filtres"><button data-filtre-equipe=""' + (filtreEquipe ? '' : ' class="choisi"') + '>Toutes</button>' +
+        donnees.equipes.map(function (e) {
+          return '<button data-filtre-equipe="' + esc(e) + '"' + (e === filtreEquipe ? ' class="choisi"' : '') + '>' + pastilleEquipe(e) + '</button>';
+        }).join('') + '</div>';
+      var liste = (donnees.resultats || []).filter(function (r) { return !filtreEquipe || r.equipe === filtreEquipe; });
+      if (!liste.length) return html + filtres + '<div class="vide">Aucun résultat pour l\'instant.</div>';
+      // Bilan du joueur sur les rencontres affichées.
+      var v = 0, d = 0;
+      liste.forEach(function (r) {
+        r.parties.forEach(function (p) {
+          if (p.nous.indexOf(moi) === -1) return;
+          var i = issuePartie(p);
+          if (i === 'Gagné') v++; else if (i === 'Perdu') d++;
+        });
+      });
+      var bilanMoi = v + d ? '<div class="bilan-moi">🎾 Ton bilan : <b>' + compte(v, 'victoire', 'victoires') + '</b> · ' + compte(d, 'défaite', 'défaites') + '</div>' : '';
+      return html + filtres + bilanMoi + liste.map(carteResultat).join('');
+    }
+
+    function carteResultat(res) {
+      var pts = pointsRencontre(res);
+      var verdict = pts.nous > pts.eux ? '<span class="verdict victoire">✅ Victoire</span>'
+        : pts.nous < pts.eux ? '<span class="verdict defaite">❌ Défaite</span>' : '<span class="verdict nul">➖ Égalité</span>';
+      return '<div class="carte rencontre ' + classeEquipe(res.equipe) + '" style="margin-left:0">' +
+        '<div class="ligne-info">' + esc(dateLongue(res.date)) + (res.lieu ? ' · ' + (res.lieu === 'Domicile' ? '🏠 Domicile' : '🚗 Extérieur') : '') + '</div>' +
+        '<div class="score-renc">' +
+          '<span class="club">' + pastilleEquipe(res.equipe) + 'TC Bazoges</span><span class="pts' + (pts.nous > pts.eux ? ' gagne' : '') + '">' + pts.nous + '</span>' +
+          '<span class="club">' + esc(res.adversaire) + '</span><span class="pts' + (pts.eux > pts.nous ? ' gagne' : '') + '">' + pts.eux + '</span>' +
+        '</div>' + verdict +
+        '<details' + (res.parties.some(function (p) { return p.nous.indexOf(moi) !== -1; }) ? ' open' : '') + '><summary>Détail des ' + res.parties.length + ' parties</summary>' +
+          res.parties.map(blocPartie).join('') +
+        '</details></div>';
+    }
+
+    function blocPartie(p) {
+      var issue = issuePartie(p), sets = setsDe(p.score);
+      var camp = function (noms, clts, club, eux) {
+        var gagnant = issue === (eux ? 'Perdu' : 'Gagné');
+        return '<div class="camp' + (gagnant ? ' gagnant' : '') + (eux ? ' eux' : '') + '"><div class="joueurs-camp">' +
+          (noms.length ? noms : ['?']).map(function (n, i) {
+            return '<div' + (!eux && n === moi ? ' class="moi-res"' : '') + '>' + esc(n) + (clts[i] ? '<span class="clt">' + esc(clts[i]) + '</span>' : '') + '</div>';
+          }).join('') + '<small>' + esc(club) + '</small></div>' +
+          '<div class="sets">' + (sets.length ? sets.map(function (s) {
+            var a = eux ? s.eux : s.nous, b = eux ? s.nous : s.eux;
+            // Points du jeu décisif : du côté de celui qui perd le set (comme sur Ten'Up).
+            return '<span' + (a > b ? ' class="pris"' : '') + '>' + a + (s.tb && a < b ? '<sup>' + esc(s.tb) + '</sup>' : '') + '</span>';
+          }).join('') : (eux ? '' : '<span>' + esc(p.score) + '</span>')) + '</div></div>';
+      };
+      return '<div class="partie"><div class="partie-titre">🎾 ' + esc(p.partie) + '</div>' +
+        camp(p.nous, p.cltNous, 'TC Bazoges', false) + camp(p.eux, p.cltEux, '', true) + '</div>';
+    }
+
     /** Tous les matchs du club, par date ; chacun peut répondre sur chaque match. */
     function ecranListe() {
       var pied = piedCapitaines();
-      if (!donnees.rencontres.length) return '<div class="vide">Aucune rencontre à venir.</div>' + pied;
+      if (!donnees.rencontres.length) return boutonAccueil() + '<div class="vide">Aucune rencontre à venir.</div>' + pied;
       if (donnees.equipes.indexOf(filtreEquipe) === -1) filtreEquipe = '';
-      var filtres = '<div class="filtres"><button data-filtre-equipe=""' + (filtreEquipe ? '' : ' class="choisi"') + '>Toutes</button>' +
+      var filtres = boutonAccueil() + '<div class="filtres"><button data-filtre-equipe=""' + (filtreEquipe ? '' : ' class="choisi"') + '>Toutes</button>' +
         donnees.equipes.map(function (e) {
           return '<button data-filtre-equipe="' + esc(e) + '"' + (e === filtreEquipe ? ' class="choisi"' : '') + '>' + pastilleEquipe(e) + '</button>';
         }).join('') + '</div>';
@@ -811,6 +957,36 @@
 
     // ======================= Espace capitaines =======================
 
+    /** Tableau des dispos : le capitaine change la réponse d'un joueur (– → ✅ → ❌ → –). */
+    var repCapEnCours = {}; // id|nom → nb d'enregistrements en attente
+    var lignesTableau = []; // joueurs affichés dans le tableau
+    var lignesFigees = null; // lignes gardées telles quelles après un toucher (jusqu'au prochain filtre ou écran)
+    function repondrePour(id, nom) {
+      var ancienne = reponseDe(id, nom);
+      var nouvelle = ancienne === '' ? 'Présent' : ancienne === 'Présent' ? 'Absent' : '';
+      var cle = id + '|' + nom;
+      if (!lignesFigees) lignesFigees = lignesTableau;
+      donnees.reponses[id] = donnees.reponses[id] || {};
+      if (nouvelle) donnees.reponses[id][nom] = nouvelle; else delete donnees.reponses[id][nom];
+      repCapEnCours[cle] = (repCapEnCours[cle] || 0) + 1;
+      rendre();
+      serveur()
+        .withSuccessHandler(function (reponses) {
+          // Une réponse plus ancienne ne doit pas effacer un toucher fait entre-temps.
+          if (--repCapEnCours[cle] === 0 && Object.keys(repCapEnCours).every(function (k) { return !repCapEnCours[k]; })) {
+            donnees.reponses = reponses;
+            if (vue === 'cap-tableau') rendre();
+          }
+        })
+        .withFailureHandler(function (err) {
+          repCapEnCours[cle]--;
+          if (ancienne) donnees.reponses[id][nom] = ancienne; else delete donnees.reponses[id][nom];
+          rendre();
+          afficherErreur('Réponse de ' + nom + ' non enregistrée : ' + (err && err.message ? err.message : 'problème de connexion') + '. Réessaie.');
+        })
+        .repondre([id], nom, nouvelle);
+    }
+
     function ecranCapitaine() {
       if (!capitaine) return jeton ? '<div class="vide">Connexion…</div>' : ecranConnexionCap();
       if (vue === 'cap-form') return ecranFormRencontre();
@@ -822,8 +998,9 @@
       if (vue === 'cap-code') return ecranCodePerso();
       if (vue === 'cap-classements') return ecranClassements();
       if (vue === 'cap-import') return ecranImport();
+      if (vue === 'cap-resultats') return selId ? ecranFormResultat() : ecranResultatsCap();
       var nbAttente = donnees.rencontres.filter(function (r) { return r.statut !== 'Validée'; }).length;
-      return '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
+      return '<div class="cap"><button class="retour" data-vue="accueil">← Page des joueurs</button><h2>⚙️ Espace capitaines</h2><p class="sous">Connecté : ' + esc(capitaine) + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
         '<div class="tuiles">' +
           tuile('cap-form', '➕', 'Créer une rencontre', 'Date, adversaire, lieu…', true) +
@@ -831,13 +1008,114 @@
           tuile('cap-selection', '🏆', 'Sélection', 'Composer les équipes, envoyer sur WhatsApp') +
           tuile('cap-tableau', '📊', 'Tableau des dispos', 'Vue globale joueurs × matchs') +
           tuile('cap-dispos', '👥', 'Dispos par match', 'Qui vient à chaque match') +
+          tuile('cap-resultats', '📋', 'Résultats', resultatsASaisir() ? resultatsASaisir() + ' à saisir' : 'Score des rencontres jouées') +
           tuile('cap-classements', '🎾', 'Classements', classementsAVerifier() ? classementsAVerifier() + ' à vérifier' : 'Tous vérifiés ce mois-ci') +
           tuile('cap-joueurs', '👤', 'Joueurs', sansReponseTotal() ? sansReponseTotal() + ' sans réponse à tout' : 'Renommer, supprimer') +
-          tuile('matchs', '🎾', 'Page des joueurs', 'Revenir aux matchs') +
+          tuile('accueil', '🎾', 'Page des joueurs', 'Dispos et résultats') +
           (appliInstallee() ? '' : tuile('installer', '📲', 'Installer l\'appli', 'Icône sur ton téléphone')) +
         '</div>' +
         '<p class="pied"><button data-vue="cap-code">🔑 Choisir ou changer mon code capitaine</button></p>' +
         '<p class="pied"><button id="deconnexion-cap">Se déconnecter de l\'espace capitaines</button></p></div>';
+    }
+
+    // ======================= Saisie des résultats (capitaines) =======================
+
+    function aujourdhui() {
+      var d = new Date();
+      return d.getFullYear() + '-' + deuxChiffres(d.getMonth() + 1) + '-' + deuxChiffres(d.getDate());
+    }
+    /** Rencontres déjà jouées (ou du jour), la plus récente en premier. */
+    function rencontresJouees() {
+      var jour = aujourdhui();
+      return (donnees.calendrier || []).filter(function (r) { return r.date <= jour; })
+        .sort(function (a, b) { return b.date.localeCompare(a.date) || a.equipe.localeCompare(b.equipe); });
+    }
+    function resultatDe(id) { return (donnees.resultats || []).filter(function (x) { return x.id === id; })[0]; }
+    function resultatsASaisir() {
+      return rencontresJouees().filter(function (r) { return !resultatDe(r.id); }).length;
+    }
+
+    function ecranResultatsCap() {
+      var html = enTeteCap('📋 Résultats') +
+        '<p class="sous">Touche une rencontre jouée pour saisir ou corriger son score (copie de la feuille de match Ten\'Up). Les joueurs le voient dans 🏆 Résultats championnat.</p>';
+      var rs = rencontresJouees();
+      if (!rs.length) return html + '<div class="vide">Aucune rencontre jouée pour l\'instant.</div></div>';
+      return html + '<div class="carte">' + rs.map(function (r) {
+        var res = resultatDe(r.id);
+        return '<div class="rencontre ' + classeEquipe(r.equipe) + '"><div class="match">' + titreMatch(r) + '</div>' +
+          '<div class="ligne-info">' + esc(dateLongue(r.date)) + ' · ' + (res ? '<b>' + scoreTexte(res) + '</b>' : '⏳ pas encore saisi') + '</div>' +
+          '<div class="ligne-cap"><button data-res="' + esc(r.id) + '">' + (res ? '✏️ Modifier le résultat' : '➕ Saisir le résultat') + '</button></div></div>';
+      }).join('') + '</div></div>';
+    }
+
+    function ecranFormResultat() {
+      var r = (donnees.calendrier || []).filter(function (x) { return x.id === selId; })[0];
+      if (!r) { selId = ''; return ecranResultatsCap(); }
+      var res = resultatDe(r.id);
+      var parties = {};
+      (res ? res.parties : []).forEach(function (p) { parties[p.partie] = p; });
+      var noms = donnees.joueurs.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); }).map(function (j) { return j.nom; });
+      var choixJoueur = function (actuel, cle) {
+        var liste = actuel && noms.indexOf(actuel) === -1 ? noms.concat([actuel]) : noms;
+        return '<select data-res-joueur="' + cle + '"><option value="">– Joueur TCB –</option>' + liste.map(function (n) {
+          return '<option' + (n === actuel ? ' selected' : '') + '>' + esc(n) + '</option>';
+        }).join('') + '</select>';
+      };
+      var html = '<div class="cap"><button class="retour" data-vue="cap-resultats">← Résultats</button>' +
+        '<h2>' + titreMatch(r) + '</h2><p class="sous">' + esc(dateLongue(r.date)) + '. Score vu du TCB, set par set : « 6-3 4-6 7-6(5) » ' +
+        '(entre parenthèses : points du jeu décisif du perdant). Une partie laissée vide n\'est pas enregistrée.</p>' +
+        '<form id="form-resultat" class="carte">';
+      donnees.parties.forEach(function (nomPartie, i) {
+        var p = parties[nomPartie] || { nous: [], cltNous: [], eux: [], cltEux: [], score: '', resultat: '' };
+        var nb = /^Double/.test(nomPartie) ? 2 : 1, k;
+        html += '<div class="form-partie" data-partie="' + esc(nomPartie) + '"><h3>🎾 ' + esc(nomPartie) + '</h3><div class="etiquette">TC Bazoges</div>';
+        for (k = 0; k < nb; k++) {
+          html += '<div class="joueur-clt">' + choixJoueur(p.nous[k] || '', i + '-' + k) +
+            '<input data-clt-nous placeholder="Clt" maxlength="10" value="' + esc(p.cltNous[k] || '') + '" id="clt-' + i + '-' + k + '"></div>';
+        }
+        html += '<div class="etiquette">' + esc(r.adversaire || 'Adversaire') + '</div>';
+        for (k = 0; k < nb; k++) {
+          html += '<div class="joueur-clt"><input data-eux placeholder="Prénom Nom" maxlength="60" value="' + esc(p.eux[k] || '') + '">' +
+            '<input data-clt-eux placeholder="Clt" maxlength="10" value="' + esc(p.cltEux[k] || '') + '"></div>';
+        }
+        html += '<div class="etiquette">Score et résultat</div><div class="ligne-score">' +
+          '<input data-score placeholder="6-3 4-6 7-6(5)" maxlength="40" value="' + esc(p.score) + '">' +
+          '<select data-resultat><option value="">Auto</option>' + ['Gagné', 'Perdu'].map(function (v) {
+            return '<option' + (p.resultat === v ? ' selected' : '') + '>' + v + '</option>';
+          }).join('') + '</select></div></div>';
+      });
+      html += '<button class="gros" type="submit">Enregistrer le résultat</button>' +
+        (res ? '<button class="gros danger" type="button" id="effacer-resultat">Effacer ce résultat</button>' : '') + '</form></div>';
+      return html;
+    }
+
+    /** Parties remplies du formulaire de résultat. */
+    function lireFormResultat() {
+      var parties = [];
+      Array.prototype.forEach.call(document.querySelectorAll('#form-resultat .form-partie'), function (bloc) {
+        var valeurs = function (sel) { return Array.prototype.map.call(bloc.querySelectorAll(sel), function (x) { return x.value.trim(); }); };
+        var nous = valeurs('[data-res-joueur]'), cltNous = valeurs('[data-clt-nous]'), eux = valeurs('[data-eux]'), cltEux = valeurs('[data-clt-eux]');
+        var score = bloc.querySelector('[data-score]').value.trim(), resultat = bloc.querySelector('[data-resultat]').value;
+        if (!nous.some(String) && !eux.some(String) && !score) return;
+        // Garde le classement en face du bon joueur, même si une ligne est vide.
+        var garder = function (noms, clts) { return clts.filter(function (c, i) { return noms[i]; }); };
+        parties.push({
+          partie: bloc.getAttribute('data-partie'),
+          nous: nous.filter(String), cltNous: garder(nous, cltNous),
+          eux: eux.filter(String), cltEux: garder(eux, cltEux),
+          score: score, resultat: resultat,
+        });
+      });
+      return parties;
+    }
+
+    function enregistrerResultat(parties, message) {
+      var id = selId;
+      appelCap('enregistrerResultat', [id, parties], function (resultats) {
+        donnees.resultats = resultats;
+        messageCap = message;
+        naviguer({ vue: 'cap-resultats' }, true);
+      });
     }
 
     function tuile(cible, icone, titre, detail, noire) {
@@ -852,7 +1130,7 @@
     }
 
     function ecranConnexionCap() {
-      var html = '<div class="cap"><button class="retour" data-vue="matchs">← Retour aux matchs</button>' +
+      var html = '<div class="cap"><button class="retour" data-vue="accueil">← Page des joueurs</button>' +
         '<h2>⚙️ Espace capitaines</h2>' +
         '<p class="sous">' + (modeMail
           ? 'Première connexion ou code oublié : tu reçois un code par mail, puis tu choisis ton code capitaine.'
@@ -1015,6 +1293,9 @@
           t[1] + ' (' + nb + ')</button>';
       }).join('') + '</div>';
       if (filtreReponse) joueurs = joueurs.filter(function (j) { return aCase(j, filtreReponse); });
+      // Pendant que le capitaine touche des cases, les lignes ne bougent pas (ni tri, ni filtre).
+      if (lignesFigees) joueurs = lignesFigees.map(joueur).filter(Boolean);
+      lignesTableau = joueurs.map(function (j) { return j.nom; });
       if (!joueurs.length) return html + '<div class="vide">Aucun joueur pour ce filtre.</div></div>';
       html += '<div class="defile"><table class="grille"><thead><tr><th class="nom">Joueur</th>' +
         rs.map(function (r) {
@@ -1027,13 +1308,16 @@
           total++;
           var rep = reponseDe(r.id, j.nom);
           if (rep) n++;
-          return rep === 'Présent' ? '<td class="oui">✅</td>' : rep === 'Absent' ? '<td class="non">❌</td>' : '<td class="vide">–</td>';
+          // Le capitaine touche la case : – → ✅ → ❌ → –
+          return '<td class="case ' + (rep === 'Présent' ? 'oui' : rep === 'Absent' ? 'non' : 'vide') + '">' +
+            '<button data-cap-rep="' + esc(r.id) + '" data-cap-nom="' + esc(j.nom) + '">' +
+            (rep === 'Présent' ? '✅' : rep === 'Absent' ? '❌' : '–') + '</button></td>';
         }).join('') + '<td>' + n + '/' + total + '</td></tr>';
       });
       html += '</tbody><tfoot><tr><td class="nom">Dispos</td>' + rs.map(function (r) {
         return '<td class="total">' + bilan(r).presents.length + '</td>';
       }).join('') + '<td></td></tr></tfoot></table></div>' +
-        '<p class="legende">✅ dispo · ❌ pas dispo · – pas encore répondu.' +
+        '<p class="legende">✅ dispo · ❌ pas dispo · – pas encore répondu. Touche une case pour changer la réponse du joueur.' +
         (filtreJour ? ' Joueurs triés : dispos d\'abord.' : ' Fais glisser le tableau vers la gauche pour voir tous les matchs.') + '</p>';
       return html + '</div>';
     }
@@ -1408,12 +1692,12 @@
     // --- Historique : le bouton retour du téléphone revient à l'écran précédent au lieu de quitter ---
     // pile[i] = écran de l'entrée i de l'historique ; pos = entrée affichée.
     // (Sur Apps Script la page est dans un cadre : on laisse l'historique tel quel.)
-    var pile = [{ vue: 'matchs', sel: '' }], pos = 0;
+    var pile = [{ vue: 'accueil', sel: '' }], pos = 0;
     var garderMessage = false; // message à afficher après un retour en arrière (ex. « Rencontre modifiée »)
     if (!surAppsScript) {
-      try { history.replaceState({ i: 0, vue: 'matchs', sel: '' }, ''); } catch (e) {}
+      try { history.replaceState({ i: 0, vue: 'accueil', sel: '' }, ''); } catch (e) {}
       window.addEventListener('popstate', function (e) {
-        var etat = e.state && typeof e.state.i === 'number' ? e.state : { i: 0, vue: 'matchs', sel: '' };
+        var etat = e.state && typeof e.state.i === 'number' ? e.state : { i: 0, vue: 'accueil', sel: '' };
         pos = etat.i;
         pile[pos] = { vue: etat.vue, sel: etat.sel || '' };
         afficherEcran(pile[pos]);
@@ -1421,8 +1705,9 @@
     }
 
     function afficherEcran(etat) {
-      selId = etat.vue === 'cap-selection' ? etat.sel : '';
+      selId = etat.vue === 'cap-selection' || etat.vue === 'cap-resultats' ? etat.sel : '';
       renommage = null;
+      lignesFigees = null;
       if (etat.vue !== vue && !garderMessage) messageCap = '';
       garderMessage = false;
       vue = etat.vue;
@@ -1478,7 +1763,7 @@
         })
         .withFailureHandler(function () {
           deconnexionCap();
-          if (vue !== 'matchs') { messageCap = 'Ce lien n\'est plus valable : redemande un lien de connexion.'; rendre(); }
+          if (VUES_JOUEURS.indexOf(vue) === -1) { messageCap = 'Ce lien n\'est plus valable : redemande un lien de connexion.'; rendre(); }
         })
         .infoCapitaine(jeton);
     }
@@ -1530,6 +1815,11 @@
         capEmail = (document.getElementById('cap-email') || {}).value || capEmail;
         codeEnvoye = true;
         rendre();
+      } else if (cible.hasAttribute('data-res')) {
+        naviguer({ vue: 'cap-resultats', sel: cible.getAttribute('data-res') });
+      } else if (cible.id === 'effacer-resultat') {
+        if (!confirm('Effacer le résultat de cette rencontre ?')) return;
+        enregistrerResultat([], 'Résultat effacé.');
       } else if (cible.hasAttribute('data-sel')) {
         naviguer({ vue: 'cap-selection', sel: cible.getAttribute('data-sel') });
       } else if (cible.id === 'retour-selection') {
@@ -1544,9 +1834,11 @@
         rendre();
       } else if (cible.hasAttribute('data-filtre-reponse')) {
         filtreReponse = cible.getAttribute('data-filtre-reponse');
+        lignesFigees = null;
         rendre();
       } else if (cible.hasAttribute('data-filtre-jour')) {
         filtreJour = cible.getAttribute('data-filtre-jour');
+        lignesFigees = null;
         rendre();
       } else if (cible.id === 'lancer-import') {
         lancerImport();
@@ -1572,7 +1864,7 @@
         serveur().deconnecterCapitaine(jeton);
         deconnexionCap();
         modeMail = false;
-        allerA('matchs');
+        allerA('accueil');
       } else if (cible.hasAttribute('data-moi')) {
         choixMoi = cible.getAttribute('data-moi');
         rendre();
@@ -1587,6 +1879,8 @@
         ecrireNom(null);
         choixMoi = '';
         rendre();
+      } else if (cible.hasAttribute('data-cap-rep')) {
+        repondrePour(cible.getAttribute('data-cap-rep'), cible.getAttribute('data-cap-nom'));
       } else if (cible.hasAttribute('data-rep')) {
         repondre(cible.getAttribute('data-id'), cible.getAttribute('data-rep'));
       }
@@ -1596,6 +1890,11 @@
       if (e.target.hasAttribute('data-classement-joueur')) definirClassement(e.target.getAttribute('data-classement-joueur'), e.target.value);
       if (e.target.id === 'fichier-import' && e.target.files[0]) lireFichierImport(e.target.files[0]);
       if (e.target.hasAttribute('data-fige-joueur')) definirFige(e.target.getAttribute('data-fige-joueur'), e.target.value);
+      if (e.target.hasAttribute('data-res-joueur')) {
+        // Résultat : le classement du joueur choisi se remplit tout seul (modifiable).
+        var j = joueur(e.target.value), champClt = document.getElementById('clt-' + e.target.getAttribute('data-res-joueur'));
+        if (champClt && j && j.classement) champClt.value = j.classement;
+      }
       if (e.target.hasAttribute('data-import-orphelin') && importPlan) {
         importPlan.choix[e.target.getAttribute('data-import-orphelin')] = e.target.value;
         rendre();
@@ -1702,6 +2001,16 @@
         });
         return;
       }
+      if (e.target.id === 'form-resultat') {
+        e.preventDefault();
+        var parties = lireFormResultat();
+        if (!parties.length) { afficherErreur('Remplis au moins une partie (ou touche « Effacer ce résultat »).'); return; }
+        var illisible = parties.filter(function (p) { return !p.resultat && !issuePartie(p); })[0];
+        if (illisible) { afficherErreur(illisible.partie + ' : score illisible ou égal. Écris-le comme « 6-3 4-6 7-6(5) » ou choisis Gagné / Perdu.'); return; }
+        var pts = pointsRencontre({ parties: parties });
+        enregistrerResultat(parties, 'Résultat enregistré : ' + pts.nous + '-' + pts.eux + '.');
+        return;
+      }
       if (e.target.id === 'form-ajout-joueur') {
         e.preventDefault();
         var nomAjout = nettoyerNom(document.getElementById('nom-ajout').value);
@@ -1732,15 +2041,15 @@
       moi = nom;
       ecrireNom(moi);
       choixMoi = '';
-      rendre();
-      window.scrollTo(0, 0);
+      allerA('accueil');
     }
 
     function charger() {
       serveur()
         .withSuccessHandler(function (d) {
           donnees = d;
-          if (vue !== 'cap-form' || !document.getElementById('form-rencontre')) rendre();
+          // Pas de rafraîchissement pendant une saisie (il effacerait les champs).
+          if (!document.getElementById('form-rencontre') && !document.getElementById('form-resultat')) rendre();
         })
         .withFailureHandler(function (err) {
           document.getElementById('contenu').innerHTML =
