@@ -72,7 +72,8 @@ var NB_POSITIONS = 4;
 var PARTIES = ['Simple 1', 'Simple 2', 'Simple 3', 'Simple 4', 'Double 1'];
 var RESULTATS = ['Gagné', 'Perdu'];
 // Classement de la poule de chaque équipe, recopié de Ten'Up par les capitaines (une ligne par club).
-var ENTETES_POULES = ['Équipe', 'Poule', 'Rang', 'Club', 'Points', 'Mis à jour le'];
+// Victoires / Défaites : rencontres gagnées / perdues (vide = pas encore jouée).
+var ENTETES_POULES = ['Équipe', 'Poule', 'Rang', 'Club', 'Points', 'Mis à jour le', 'Victoires', 'Défaites'];
 
 // ---------------------------------------------------------------------------
 // Menu dans la Sheet
@@ -1181,7 +1182,7 @@ function importerResultatsUneFois_() {
 // Classement championnat (poules)
 // ---------------------------------------------------------------------------
 
-/** Onglet Classement championnat, créé au premier besoin. */
+/** Onglet Classement championnat, créé au premier besoin (colonnes Victoires / Défaites ajoutées si absentes). */
 function ongletPoules_() {
   var ss = SpreadsheetApp.getActive();
   var sheet = ss.getSheetByName(ONGLET_POULES);
@@ -1189,11 +1190,20 @@ function ongletPoules_() {
     sheet = ss.insertSheet(ONGLET_POULES);
     preparerEntetes_(sheet, ENTETES_POULES);
     sheet.getRange('F:F').setNumberFormat('dd/mm/yyyy hh:mm');
+  } else if (sheet.getLastColumn() < ENTETES_POULES.length) {
+    preparerEntetes_(sheet, ENTETES_POULES);
   }
   return sheet;
 }
 
-/** { 'Hommes 1': { poule, majLe, lignes: [{ rang, club, points }] } } */
+/** Nombre de 0 à 99, ou '' si la case est vide. */
+function nombreOuVide_(v) {
+  if (v === '' || v === null || v === undefined) return '';
+  var n = parseInt(v, 10);
+  return n >= 0 && n <= 99 ? n : '';
+}
+
+/** { 'Hommes 1': { poule, majLe, lignes: [{ rang, club, points, v, d }] } } */
 function lirePoules_() {
   var ss = SpreadsheetApp.getActive();
   var poules = {};
@@ -1206,7 +1216,8 @@ function lirePoules_() {
     if (!p.poule) p.poule = String(l[1]).trim();
     var maj = l[5] instanceof Date ? Utilities.formatDate(l[5], tz, 'yyyy-MM-dd') : '';
     if (maj > p.majLe) p.majLe = maj;
-    p.lignes.push({ rang: Number(l[2]) || 0, club: club, points: l[4] === '' ? '' : Number(l[4]) || 0 });
+    p.lignes.push({ rang: Number(l[2]) || 0, club: club, points: l[4] === '' ? '' : Number(l[4]) || 0,
+      v: nombreOuVide_(l[6]), d: nombreOuVide_(l[7]) });
   });
   Object.keys(poules).forEach(function (e) {
     poules[e].lignes.sort(function (a, b) { return (a.rang || 99) - (b.rang || 99); });
@@ -1214,7 +1225,7 @@ function lirePoules_() {
   return poules;
 }
 
-/** Remplace le classement d'une équipe. lignes : [{ rang, club, points }] (liste vide = effacer). */
+/** Remplace le classement d'une équipe. lignes : [{ rang, club, points, v, d }] (liste vide = effacer). */
 function enregistrerPoule(jeton, equipe, poule, lignes) {
   verifierCapitaine_(jeton);
   if (EQUIPES.indexOf(equipe) === -1) throw new Error('Équipe inconnue.');
@@ -1224,7 +1235,8 @@ function enregistrerPoule(jeton, equipe, poule, lignes) {
     if (!club) throw new Error('Nom de club manquant.');
     var rang = parseInt(x.rang, 10), points = parseInt(x.points, 10);
     if (!(rang >= 1 && rang <= 20)) throw new Error('Rang invalide pour ' + club + '.');
-    return [equipe, String(poule || '').trim().slice(0, 60), rang, club, isNaN(points) ? 0 : points, maintenant];
+    return [equipe, String(poule || '').trim().slice(0, 60), rang, club, isNaN(points) ? 0 : points, maintenant,
+      nombreOuVide_(x.v), nombreOuVide_(x.d)];
   });
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
@@ -1242,7 +1254,8 @@ function enregistrerPoule(jeton, equipe, poule, lignes) {
   return lirePoules_();
 }
 
-// Classements relevés sur Ten'Up au moment de la mise en ligne de l'écran.
+// Classements relevés sur Ten'Up. Lignes : [rang, club, points, victoires, défaites] (victoire 3 pts, défaite 1 pt).
+// Chaque entrée s'applique une seule fois. remplacer : écrase le classement déjà saisi pour l'équipe.
 var POULES_INITIALES = [
   {
     equipe: 'Hommes 1', poule: 'Phase préliminaire – Poule C',
@@ -1254,24 +1267,44 @@ var POULES_INITIALES = [
     lignes: [[1, 'St Etienne Palluau Tennis 1', 3], [2, 'TC Loulaysien 3', 3], [3, 'TC Bellevigny 2', 3], [4, 'Tennis Club Flavois 1', 1],
       [5, 'Tennis Rives de l\'Yon 1', 1], [6, 'TC Bazogeais 2', 1], [7, 'TC Macheen 2', 0], [7, 'TC Mouchampais 2', 0]],
   },
+  // 02/11/2026 : victoires / défaites ajoutées ; Hommes 2 après la victoire 4-1 contre Flavois (match avancé).
+  {
+    cle: '2026-11-02', remplacer: true,
+    equipe: 'Hommes 1', poule: 'Phase préliminaire – Poule C',
+    lignes: [[1, 'TC Les Achards 2', 3, 1, 0], [2, 'Ste Hermine TC 1', 3, 1, 0], [3, 'Atlantique TC 85 3', 1, 0, 1],
+      [4, 'TC Bazogeais 1', 1, 0, 1], [5, 'Talmont Tennis Club (TTC) 2', 0], [5, 'TC de Montaigu 4', 0],
+      [5, 'TC de Montaigu 5', 0], [5, 'TC des Clouzeaux 2', 0]],
+  },
+  {
+    cle: '2026-11-02', remplacer: true,
+    equipe: 'Hommes 2', poule: 'Phase préliminaire – Poule B',
+    lignes: [[1, 'TC Bazogeais 2', 4, 1, 1], [2, 'St Etienne Palluau Tennis 1', 3, 1, 0], [3, 'TC Loulaysien 3', 3, 1, 0],
+      [4, 'TC Bellevigny 2', 3, 1, 0], [5, 'Tennis Club Flavois 1', 2, 0, 2], [6, 'Tennis Rives de l\'Yon 1', 1, 0, 1],
+      [7, 'TC Macheen 2', 0], [7, 'TC Mouchampais 2', 0]],
+  },
 ];
 
-/** Ajoute une fois chaque classement de POULES_INITIALES (sauf si l'équipe a déjà un classement). */
+/** Applique une fois chaque classement de POULES_INITIALES (sans remplacer : seulement si l'équipe n'a pas encore de classement). */
 function importerPoulesUneFois_() {
   var props = PropertiesService.getScriptProperties();
-  var cle = function (p) { return 'poule_initiale_' + p.equipe + '_' + p.poule; };
+  var cle = function (p) { return 'poule_initiale_' + p.equipe + '_' + p.poule + (p.cle ? '_' + p.cle : ''); };
   var restants = POULES_INITIALES.filter(function (p) { return !props.getProperty(cle(p)); });
   if (!restants.length) return;
   var verrou = LockService.getScriptLock();
   verrou.waitLock(20000);
   try {
     var sheet = ongletPoules_();
-    var deja = {};
-    lireLignes_(ONGLET_POULES).forEach(function (l) { deja[String(l[0]).trim()] = true; });
     restants.forEach(function (p) {
       if (props.getProperty(cle(p))) return;
-      if (!deja[p.equipe]) {
-        var lignes = p.lignes.map(function (x) { return [p.equipe, p.poule, x[0], x[1], x[2], new Date()]; });
+      var existantes = lireLignes_(ONGLET_POULES)
+        .map(function (l, i) { return String(l[0]).trim() === p.equipe ? i + 2 : 0; })
+        .filter(Boolean);
+      if (p.remplacer) existantes.reverse().forEach(function (n) { sheet.deleteRow(n); });
+      if (p.remplacer || !existantes.length) {
+        var maintenant = new Date();
+        var lignes = p.lignes.map(function (x) {
+          return [p.equipe, p.poule, x[0], x[1], x[2], maintenant, x.length > 3 ? x[3] : '', x.length > 4 ? x[4] : ''];
+        });
         sheet.getRange(sheet.getLastRow() + 1, 1, lignes.length, ENTETES_POULES.length).setValues(lignes);
       }
       props.setProperty(cle(p), new Date().toISOString());

@@ -368,17 +368,23 @@
     .classement .rang { width: 44px; font-weight: 700; color: var(--doux); }
     .classement .pts { width: 56px; text-align: right; font-weight: 800; }
     .classement th.pts { text-align: right; }
+    .classement .vd { width: 64px; text-align: center; white-space: nowrap; }
+    .classement th.vd { text-align: center; }
+    .classement .vd .v { color: var(--vert); font-weight: 700; }
+    .classement .vd .d { color: var(--rouge); font-weight: 700; }
+    .classement tr.nous .vd .v, .classement tr.nous .vd .d { color: inherit; }
+    .legende-classement { color: var(--doux); font-size: 13px; margin: 8px 2px 0; }
     .classement tr.nous td { background: var(--jaune); color: #151515; font-weight: 800; }
     .classement tr.nous td:first-child { border-radius: 8px 0 0 8px; }
     .classement tr.nous td:last-child { border-radius: 0 8px 8px 0; }
     .maj { color: var(--doux); font-size: 13px; margin: 8px 2px 0; }
-    .ligne-poule { display: grid; grid-template-columns: 52px 1fr 64px 40px; gap: 6px; margin-bottom: 6px; }
+    .ligne-poule { display: grid; grid-template-columns: 40px 1fr 44px 36px 36px 34px; gap: 6px; margin-bottom: 6px; }
     .ligne-poule input {
-      width: 100%; min-height: 44px; border-radius: 10px; border: 2px solid var(--ligne); padding: 0 8px;
+      width: 100%; min-width: 0; min-height: 44px; border-radius: 10px; border: 2px solid var(--ligne); padding: 0 6px;
       background: var(--carte); color: var(--texte); font-size: 16px; font-family: inherit;
     }
     .ligne-poule button { border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte); color: var(--rouge); font-size: 16px; cursor: pointer; }
-    .entete-poule { display: grid; grid-template-columns: 52px 1fr 64px 40px; gap: 6px; font-size: 12px; color: var(--doux); font-weight: 600; margin-bottom: 4px; }
+    .entete-poule { display: grid; grid-template-columns: 40px 1fr 44px 36px 36px 34px; gap: 6px; font-size: 12px; color: var(--doux); font-weight: 600; margin-bottom: 4px; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -745,6 +751,13 @@
       }).filter(String).join(' · ');
     }
 
+    /** « 1V 1D », ou « – » si l'équipe n'a pas encore joué. */
+    function texteVD(l) {
+      var v = +l.v || 0, d = +l.d || 0;
+      if (!v && !d) return '–';
+      return '<span class="v">' + v + 'V</span> <span class="d">' + d + 'D</span>';
+    }
+
     function ecranClassementChampionnat() {
       var poules = donnees.poules || {};
       return '<div class="cap">' + boutonAccueil() + '<h2>🏆 Classement championnat</h2></div>' +
@@ -752,12 +765,17 @@
           var p = poules[e];
           var html = '<div class="carte"><p class="jour">' + pastilleEquipe(e) + '</p>';
           if (!p || !p.lignes.length) return html + '<div class="vide" style="padding:16px 0">Classement pas encore saisi.</div></div>';
+          var avecVD = p.lignes.some(function (l) { return l.v !== '' && l.v !== undefined || l.d !== '' && l.d !== undefined; });
           return html + (p.poule ? '<p class="poule-titre">' + esc(p.poule) + '</p>' : '') +
-            '<table class="classement"><thead><tr><th>Class.</th><th>Équipe</th><th class="pts">Points</th></tr></thead><tbody>' +
+            '<table class="classement"><thead><tr><th>Class.</th><th>Équipe</th>' + (avecVD ? '<th class="vd">V / D</th>' : '') +
+            '<th class="pts">Points</th></tr></thead><tbody>' +
             p.lignes.map(function (l) {
               return '<tr' + (estNous(l.club) ? ' class="nous"' : '') + '><td class="rang">' + esc(rangTexte(l.rang)) + '</td>' +
-                '<td>' + esc(l.club) + '</td><td class="pts">' + esc(l.points) + '</td></tr>';
+                '<td>' + esc(l.club) + '</td>' + (avecVD ? '<td class="vd">' + texteVD(l) + '</td>' : '') +
+                '<td class="pts">' + esc(l.points) + '</td></tr>';
             }).join('') + '</tbody></table>' +
+            (avecVD ? '<p class="legende-classement">V / D : rencontres gagnées / perdues. Victoire = 3 points, défaite = 1 point. ' +
+              'Toutes les équipes n\'ont pas joué le même nombre de rencontres.</p>' : '') +
             (p.majLe ? '<p class="maj">Mis à jour le ' + esc(dateDansPhrase(p.majLe)) + '</p>' : '') + '</div>';
         }).join('');
     }
@@ -1196,16 +1214,18 @@
         return '<div class="ligne-poule"><input data-p-rang inputmode="numeric" maxlength="2" value="' + esc(l.rang || '') + '">' +
           '<input data-p-club maxlength="60" placeholder="Nom de l\'équipe" value="' + esc(l.club || '') + '">' +
           '<input data-p-points inputmode="numeric" maxlength="3" value="' + esc(l.points === undefined ? '' : l.points) + '">' +
+          '<input data-p-v inputmode="numeric" maxlength="2" value="' + esc(l.v === undefined ? '' : l.v) + '">' +
+          '<input data-p-d inputmode="numeric" maxlength="2" value="' + esc(l.d === undefined ? '' : l.d) + '">' +
           '<button type="button" data-p-suppr title="Retirer">✕</button></div>';
       };
       return enTeteCap('🏆 Classement championnat') +
-        '<p class="sous">Recopie le classement de la poule depuis Ten\'Up après chaque journée. La ligne du TC Bazogeais est surlignée chez les joueurs.</p>' +
+        '<p class="sous">Recopie le classement de la poule depuis Ten\'Up après chaque journée. V / D : rencontres gagnées / perdues (colonne « Rencontres disputées » de Ten\'Up). La ligne du TC Bazogeais est surlignée chez les joueurs.</p>' +
         donnees.equipes.map(function (e) {
           var p = poules[e] || { poule: '', lignes: [] };
           var lignes = p.lignes.length ? p.lignes : [{ rang: 1, club: '', points: 0 }];
           return '<form class="carte" data-form-poule="' + esc(e) + '"><p class="jour">' + pastilleEquipe(e) + '</p>' +
             '<div class="champ"><label>Phase / poule</label><input data-p-poule maxlength="60" placeholder="ex. Phase préliminaire – Poule C" value="' + esc(p.poule) + '"></div>' +
-            '<div class="entete-poule"><span>Rang</span><span>Équipe</span><span>Points</span><span></span></div>' +
+            '<div class="entete-poule"><span>Rang</span><span>Équipe</span><span>Pts</span><span>V</span><span>D</span><span></span></div>' +
             '<div data-p-lignes>' + lignes.map(ligne).join('') + '</div>' +
             '<template>' + ligne({}) + '</template>' +
             '<button type="button" class="gros second" data-p-ajout>➕ Ajouter une équipe</button>' +
@@ -1220,6 +1240,8 @@
           rang: l.querySelector('[data-p-rang]').value.trim(),
           club: l.querySelector('[data-p-club]').value.trim(),
           points: l.querySelector('[data-p-points]').value.trim(),
+          v: l.querySelector('[data-p-v]').value.trim(),
+          d: l.querySelector('[data-p-d]').value.trim(),
         };
       }).filter(function (l) { return l.club; });
       var invalide = lignes.filter(function (l) { return !(+l.rang >= 1); })[0];
