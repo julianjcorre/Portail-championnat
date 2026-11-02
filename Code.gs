@@ -1093,6 +1093,16 @@ var RESULTATS_INITIAUX = [
       ['Double 1', 'Jonathan R / Sofiane M', '19 ; 19', 'Quentin Le Gouedec / Stéphane Arnoult', '13 ; 15', '5-7 5-7', 'Perdu'],
     ],
   },
+  {
+    date: '2026-11-01', equipe: 'Hommes 2', adversaire: 'TC Flavois', lieu: 'Domicile',
+    parties: [
+      ['Simple 1', 'Matthieu J', '30/1', 'Jean-François Fournier', '30/2', '7-6(2) 6-2', 'Gagné'],
+      ['Simple 2', 'Jacky Y', '30/3', 'Alexandre Bonnaud', '30/3', '6-4 6-0', 'Gagné'],
+      ['Simple 3', 'Adrien G', '30/3', 'Stéphane Molinet', '30/3', '3-6 6-1 2-6', 'Perdu'],
+      ['Simple 4', 'Nicolas P', '30/4', 'Anthony Delhumeau', '40', '6-0 2-6 6-1', 'Gagné'],
+      ['Double 1', 'Matthieu J / Jacky Y', '13 ; 15', 'Jean-François Fournier / Alexandre Bonnaud', '14 ; 15', '6-2 6-7(5) 10-5', 'Gagné'],
+    ],
+  },
 ];
 
 /** « 2026-10-18|Hommes 1 » pour une ligne de l'onglet Résultats. */
