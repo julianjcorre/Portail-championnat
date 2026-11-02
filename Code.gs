@@ -682,6 +682,40 @@ function importerJoueurs(jeton, joueurs, supprimer) {
   return bilan;
 }
 
+// Joueurs à ajouter une fois à l'onglet Joueurs (nom « Prénom N », classement, licence ; rien d'autre).
+// Ignoré si un joueur a déjà ce nom ou cette licence.
+var JOUEURS_A_AJOUTER = [
+  { nom: 'Quentin S', classement: 'NC', licence: '9125985 Y' },
+];
+
+function ajouterJoueursUneFois_() {
+  var props = PropertiesService.getScriptProperties();
+  var cle = function (j) { return 'joueur_ajoute_' + j.licence; };
+  var restants = JOUEURS_A_AJOUTER.filter(function (j) { return !props.getProperty(cle(j)); });
+  if (!restants.length) return;
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(20000);
+  try {
+    var sheet = colonnesClassement_();
+    var maintenant = new Date();
+    restants.forEach(function (j) {
+      if (props.getProperty(cle(j))) return;
+      var lignes = lireLignes_(ONGLET_JOUEURS);
+      var licenceCle = j.licence.replace(/\s/g, '');
+      var deja = lignes.some(function (l) {
+        return cleNom_(l[0]) === cleNom_(j.nom) || String(l[5] || '').replace(/\s/g, '').toUpperCase() === licenceCle;
+      });
+      if (!deja) {
+        sheet.appendRow([j.nom, GROUPES_INSCRIPTION[0].equipes.join(', '), maintenant, j.classement, maintenant, j.licence]);
+      }
+      props.setProperty(cle(j), maintenant.toISOString());
+    });
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+}
+
 /**
  * Classement d'un joueur, saisi par un capitaine ('' pour l'effacer).
  * Remet aussi la date de vérification à aujourd'hui (même classement = « toujours bon »).
@@ -1380,6 +1414,7 @@ function doPost(e) {
 function getDonnees() {
   importerCalendrierUneFois_();
   nettoyerJoueursUneFois_();
+  ajouterJoueursUneFois_();
   dedoublonnerResultatsUneFois_();
   importerResultatsUneFois_();
   importerPoulesUneFois_();
