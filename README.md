@@ -46,7 +46,7 @@ Liste de départ (en haut de `Code.gs`) :
 | florent.guery1@gmail.com | Capitaine (`CAPITAINES`) |
 | jamin.matthieu85@gmail.com | Capitaine (`CAPITAINES`) |
 
-**🛡️ Accès** (admins seulement) : ajouter une adresse comme capitaine ou admin, changer le rôle de quelqu'un (menu Capitaine / Admin), ou « ✕ Retirer l'accès ». Retirer une adresse la déconnecte aussitôt sur tous ses téléphones (jetons effacés) et efface son code capitaine. Le compte du club reste toujours admin, et un admin ne peut pas changer son propre accès (pas de risque de se bloquer dehors). Dès le 1er changement fait dans 🛡️ Accès, la liste est gardée dans les propriétés du script (clé `acces`) et les listes `CAPITAINES` / `ADMINS` de `Code.gs` ne servent plus.
+**🛡️ Accès** (admins seulement) : ajouter une adresse comme capitaine ou admin, le mettre administrateur ou non (case « 🛡️ Administrateur » à l'ajout, boutons « 🛡️ Rendre admin » / « ⚙️ Plus admin » ensuite), ou « ✕ Retirer l'accès ». Retirer une adresse la déconnecte aussitôt sur tous ses téléphones (jetons effacés) et efface son code capitaine. Le compte du club reste toujours admin, et un admin ne peut pas changer son propre accès (pas de risque de se bloquer dehors). Dès le 1er changement fait dans 🛡️ Accès, la liste est gardée dans les propriétés du script (clé `acces`) et les listes `CAPITAINES` / `ADMINS` de `Code.gs` ne servent plus.
 
 Connexion :
 1. « ⚙️ Espace capitaines » → taper son adresse e-mail → « Recevoir mon lien de connexion ».

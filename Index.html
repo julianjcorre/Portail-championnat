@@ -195,6 +195,9 @@
       flex: 1; min-height: 42px; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte);
       color: var(--texte); font-weight: 600; font-size: 15px; font-family: inherit; cursor: pointer;
     }
+    .case-admin { display: flex; align-items: center; gap: 10px; font-weight: 600; margin: 4px 0 14px; cursor: pointer; }
+    .case-admin input { width: 22px; height: 22px; accent-color: var(--jaune-fonce); }
+    .case-admin small { font-weight: 400; color: var(--gris, inherit); }
     .ligne-cap select {
       flex: 1; min-height: 42px; border-radius: 10px; border: 2px solid var(--ligne); background: var(--carte);
       color: var(--texte); font-weight: 600; font-size: 15px; font-family: inherit; padding: 0 8px;
@@ -1301,18 +1304,16 @@
           '<div class="ligne-info">' + (m.role === 'admin' ? '🛡️ Admin' : '⚙️ Capitaine') +
           (m.proprietaire ? ' · compte du club' : '') + (m.moi ? ' · toi' : '') + '</div>' +
           (fixe ? '' : '<div class="ligne-cap">' +
-            '<select data-acces-role="' + esc(m.email) + '">' +
-              '<option value="capitaine"' + (m.role === 'capitaine' ? ' selected' : '') + '>⚙️ Capitaine</option>' +
-              '<option value="admin"' + (m.role === 'admin' ? ' selected' : '') + '>🛡️ Admin</option>' +
-            '</select>' +
+            '<button data-acces-admin="' + esc(m.email) + '" data-acces-nouveau="' + (m.role === 'admin' ? 'capitaine' : 'admin') + '">' +
+              (m.role === 'admin' ? '⚙️ Plus admin' : '🛡️ Rendre admin') + '</button>' +
             '<button data-acces-retirer="' + esc(m.email) + '">✕ Retirer l\'accès</button></div>') +
           '</div>';
       }).join('') + '</div>';
       return html + '<form id="form-acces" class="carte"><h3>➕ Ajouter</h3>' +
         '<div class="champ"><label for="acces-email">Adresse e-mail</label>' +
         '<input id="acces-email" type="email" autocomplete="off" placeholder="prenom.nom@gmail.com" required></div>' +
-        '<div class="champ"><label for="acces-role">Rôle</label><select id="acces-role">' +
-          '<option value="capitaine">⚙️ Capitaine</option><option value="admin">🛡️ Admin</option></select></div>' +
+        '<label class="case-admin"><input id="acces-admin" type="checkbox"> 🛡️ Administrateur ' +
+          '<small>(sinon : capitaine)</small></label>' +
         '<button class="gros" type="submit">Donner l\'accès</button>' +
         '<p class="sous">Ensuite, la personne se connecte avec « ⚙️ Espace capitaines » → « Recevoir un code par mail ».</p></form></div>';
     }
@@ -2035,6 +2036,9 @@
           messageCap = nomSuppr + ' a été supprimé.';
           if (moi === nomSuppr) { moi = null; ecrireNom(null); }
         });
+      } else if (cible.hasAttribute('data-acces-admin')) {
+        var emailRole = cible.getAttribute('data-acces-admin'), nouveauRole = cible.getAttribute('data-acces-nouveau');
+        changerAcces(emailRole, nouveauRole, emailRole + (nouveauRole === 'admin' ? ' est maintenant admin.' : ' n\'est plus admin (reste capitaine).'));
       } else if (cible.hasAttribute('data-acces-retirer')) {
         var emailRetire = cible.getAttribute('data-acces-retirer');
         if (!confirm('Retirer l\'accès de ' + emailRetire + ' ? Il ne pourra plus ouvrir l\'espace capitaines.')) return;
@@ -2068,10 +2072,6 @@
     document.addEventListener('change', function (e) {
       if (e.target.hasAttribute('data-classement-joueur')) definirClassement(e.target.getAttribute('data-classement-joueur'), e.target.value);
       if (e.target.id === 'fichier-import' && e.target.files[0]) lireFichierImport(e.target.files[0]);
-      if (e.target.hasAttribute('data-acces-role')) {
-        var emailRole = e.target.getAttribute('data-acces-role'), nouveauRole = e.target.value;
-        changerAcces(emailRole, nouveauRole, emailRole + ' est maintenant ' + (nouveauRole === 'admin' ? 'admin.' : 'capitaine.'));
-      }
       if (e.target.hasAttribute('data-fige-joueur')) definirFige(e.target.getAttribute('data-fige-joueur'), e.target.value);
       if (e.target.hasAttribute('data-res-joueur')) {
         // Résultat : le classement du joueur choisi se remplit tout seul (modifiable).
@@ -2202,7 +2202,7 @@
       if (e.target.id === 'form-acces') {
         e.preventDefault();
         var emailAjout = document.getElementById('acces-email').value.trim().toLowerCase();
-        var roleAjout = document.getElementById('acces-role').value;
+        var roleAjout = document.getElementById('acces-admin').checked ? 'admin' : 'capitaine';
         if (!emailAjout) { afficherErreur('Tape l\'adresse e-mail.'); return; }
         changerAcces(emailAjout, roleAjout, emailAjout + ' a maintenant accès comme ' + (roleAjout === 'admin' ? 'admin.' : 'capitaine.'));
         return;
