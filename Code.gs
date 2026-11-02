@@ -21,11 +21,17 @@ var GROUPES_INSCRIPTION = [
   { libelle: 'Hommes', equipes: ['Hommes 1', 'Hommes 2'] },
 ];
 
-// Comptes Google autorisés à gérer les rencontres (en plus du propriétaire de la Sheet).
+// Liste de départ des capitaines et administrateurs (en plus du propriétaire de la Sheet, toujours admin).
+// Après le 1er changement fait par un admin dans la page (⚙️ → 🛡️ Accès), la liste vit dans les
+// propriétés du script (clé « acces ») et ces deux listes ne servent plus.
 var CAPITAINES = [
   'julian.jcorre@gmail.com',
   'florent.guery1@gmail.com',
   'jamin.matthieu85@gmail.com',
+];
+// Les administrateurs ont tous les droits des capitaines, et choisissent en plus qui est capitaine ou admin.
+var ADMINS = [
+  'julian.jcorre@gmail.com',
 ];
 
 var NOM_CLUB = 'TC Bazoges';
@@ -365,10 +371,93 @@ function nouvelId_() {
 var DUREE_JETON_JOURS = 365;
 var MAX_MAILS_PAR_JOUR = 10;
 
-function adressesCapitaines_() {
+function enMinuscules_(liste) {
+  return liste.map(function (e) { return String(e).trim().toLowerCase(); }).filter(String);
+}
+
+/** { capitaines: [...], admins: [...] } : propriétés du script, sinon les listes en haut du fichier. */
+function lireAcces_() {
+  var brut = PropertiesService.getScriptProperties().getProperty('acces');
+  var acces = brut ? JSON.parse(brut) : { capitaines: CAPITAINES, admins: ADMINS };
+  var admins = enMinuscules_(acces.admins || []);
+  return {
+    admins: admins,
+    capitaines: enMinuscules_(acces.capitaines || []).filter(function (e) { return admins.indexOf(e) === -1; }),
+  };
+}
+
+function adresseProprietaire_() {
   var proprietaire = SpreadsheetApp.getActive().getOwner();
-  return CAPITAINES.map(function (e) { return e.toLowerCase(); })
-    .concat(proprietaire ? [String(proprietaire.getEmail()).toLowerCase()] : []);
+  return proprietaire ? String(proprietaire.getEmail()).toLowerCase() : '';
+}
+
+/** Adresses ayant accès à l'espace capitaines : capitaines, admins et propriétaire de la Sheet. */
+function adressesCapitaines_() {
+  var acces = lireAcces_(), proprietaire = adresseProprietaire_();
+  return acces.capitaines.concat(acces.admins, proprietaire ? [proprietaire] : []);
+}
+
+function adressesAdmins_() {
+  var proprietaire = adresseProprietaire_();
+  return lireAcces_().admins.concat(proprietaire ? [proprietaire] : []);
+}
+
+/** Comme verifierCapitaine_, mais réservé aux administrateurs. */
+function verifierAdmin_(jeton) {
+  var email = verifierCapitaine_(jeton);
+  if (adressesAdmins_().indexOf(email) === -1) throw new Error('Réservé aux administrateurs.');
+  return email;
+}
+
+/** Liste des accès, pour l'écran 🛡️ Accès (admins seulement). */
+function getAcces(jeton) {
+  var moi = verifierAdmin_(jeton);
+  var acces = lireAcces_(), proprietaire = adresseProprietaire_();
+  var membres = [];
+  if (proprietaire) membres.push({ email: proprietaire, role: 'admin', proprietaire: true });
+  acces.admins.forEach(function (e) { if (e !== proprietaire) membres.push({ email: e, role: 'admin' }); });
+  acces.capitaines.forEach(function (e) { if (e !== proprietaire) membres.push({ email: e, role: 'capitaine' }); });
+  membres.forEach(function (m) { m.moi = m.email === moi; });
+  return { membres: membres };
+}
+
+/**
+ * Donne un rôle à une adresse : 'admin', 'capitaine', ou '' pour lui retirer tout accès
+ * (ses connexions en cours et son code capitaine sont effacés). Renvoie la nouvelle liste.
+ */
+function definirAcces(jeton, adresse, role) {
+  var moi = verifierAdmin_(jeton);
+  var email = String(adresse || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Adresse e-mail invalide.');
+  if (['admin', 'capitaine', ''].indexOf(role) === -1) throw new Error('Rôle inconnu.');
+  if (email === adresseProprietaire_()) throw new Error('Le compte du club (propriétaire de la Sheet) reste toujours administrateur.');
+  if (email === moi) throw new Error('Tu ne peux pas changer ton propre accès : demande à un autre administrateur.');
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(10000);
+  try {
+    var acces = lireAcces_();
+    var sans = function (liste) { return liste.filter(function (e) { return e !== email; }); };
+    acces.admins = sans(acces.admins);
+    acces.capitaines = sans(acces.capitaines);
+    if (role === 'admin') acces.admins.push(email);
+    if (role === 'capitaine') acces.capitaines.push(email);
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('acces', JSON.stringify(acces));
+    if (!role) {
+      // Plus d'accès : on efface ses connexions (jetons), son code capitaine et son code de mail en cours.
+      props.deleteProperty('code_perso_' + email);
+      props.deleteProperty('code_' + email);
+      var toutes = props.getProperties();
+      Object.keys(toutes).forEach(function (cle) {
+        if (cle.indexOf('jeton_') !== 0) return;
+        try { if (JSON.parse(toutes[cle]).email === email) props.deleteProperty(cle); } catch (e) {}
+      });
+    }
+    console.log(moi + ' : ' + email + ' → ' + (role || 'aucun accès'));
+  } finally {
+    verrou.releaseLock();
+  }
+  return getAcces(jeton);
 }
 
 /**
@@ -691,7 +780,8 @@ function definirSelection(jeton, idRencontre, nom, role) {
 
 /** Adresse du capitaine connecté avec ce jeton (erreur si le jeton n'est plus valable). */
 function infoCapitaine(jeton) {
-  return { email: verifierCapitaine_(jeton) };
+  var email = verifierCapitaine_(jeton);
+  return { email: email, admin: adressesAdmins_().indexOf(email) !== -1 };
 }
 
 function deconnecterCapitaine(jeton) {
@@ -1224,6 +1314,8 @@ function doPost(e) {
     definirSelection: definirSelection,
     enregistrerResultat: enregistrerResultat,
     enregistrerPoule: enregistrerPoule,
+    getAcces: getAcces,
+    definirAcces: definirAcces,
   };
   var sortie;
   try {

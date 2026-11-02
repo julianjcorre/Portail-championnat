@@ -33,11 +33,20 @@ Après une modification de `Index.html`, copier le fichier en `index.html` dans 
 
 ## Côté capitaines
 
-Espace capitaines **dans la page des joueurs** (lien « ⚙️ Espace capitaines » en bas), sans passer par la Sheet. Réservé au compte du club (propriétaire de la Sheet) et aux adresses listées dans `CAPITAINES` en haut de `Code.gs` :
+Espace capitaines **dans la page des joueurs** (lien « ⚙️ Espace capitaines » en bas), sans passer par la Sheet. Réservé au compte du club (propriétaire de la Sheet) et aux adresses ayant un rôle :
 
-- julian.jcorre@gmail.com
-- florent.guery1@gmail.com
-- jamin.matthieu85@gmail.com
+- **Capitaine** : tout l'espace capitaines (rencontres, sélection, joueurs, résultats…).
+- **Admin** : les mêmes droits, plus la vignette **🛡️ Accès** pour choisir qui est capitaine ou admin.
+
+Liste de départ (en haut de `Code.gs`) :
+
+| Adresse | Rôle |
+| --- | --- |
+| julian.jcorre@gmail.com | Admin (`ADMINS`) |
+| florent.guery1@gmail.com | Capitaine (`CAPITAINES`) |
+| jamin.matthieu85@gmail.com | Capitaine (`CAPITAINES`) |
+
+**🛡️ Accès** (admins seulement) : ajouter une adresse comme capitaine ou admin, changer le rôle de quelqu'un (menu Capitaine / Admin), ou « ✕ Retirer l'accès ». Retirer une adresse la déconnecte aussitôt sur tous ses téléphones (jetons effacés) et efface son code capitaine. Le compte du club reste toujours admin, et un admin ne peut pas changer son propre accès (pas de risque de se bloquer dehors). Dès le 1er changement fait dans 🛡️ Accès, la liste est gardée dans les propriétés du script (clé `acces`) et les listes `CAPITAINES` / `ADMINS` de `Code.gs` ne servent plus.
 
 Connexion :
 1. « ⚙️ Espace capitaines » → taper son adresse e-mail → « Recevoir mon lien de connexion ».
@@ -66,7 +75,7 @@ Vignettes :
 - **👤 Joueurs** : inscrits triés par nombre de réponses manquantes (ceux qui n'ont jamais répondu en tête) ; renommer (refusé si le nom existe déjà) ou supprimer un joueur (ses réponses avec). Menu Libre / 🔒 H1 / 🔒 H2 par joueur : un joueur **figé** dans une équipe (colonne `Équipe(s)` réduite à cette équipe) ne peut donner ses dispos que pour elle (refusé aussi côté serveur) ; il voit tous les matchs, avec « 🔒 Tu es figé en Hommes 1 » sur ceux de l'autre équipe, et n'apparaît plus dans la Sélection de l'autre équipe. Ajout d'un joueur absent de la liste.
 - **🎾 Page des joueurs**.
 
-Sécurité : les fonctions de gestion exigent un jeton valable, lié à une adresse encore présente dans `CAPITAINES` (retirer une adresse coupe son accès). Les jetons sont stockés dans les propriétés du script. Ne pas transférer le mail de connexion.
+Sécurité : les fonctions de gestion exigent un jeton valable, lié à une adresse qui a encore un rôle (retirer une adresse dans 🛡️ Accès coupe son accès) ; celles de 🛡️ Accès exigent en plus le rôle admin, vérifié côté serveur. Les jetons sont stockés dans les propriétés du script. Ne pas transférer le mail de connexion.
 
 Repères visuels : Hommes 1 en bleu doux, Hommes 2 en violet doux (pastille du nom + trait le long du match, sur toutes les vues). Filtre Toutes / Hommes 1 / Hommes 2 en haut de la page des joueurs, mémorisé sur le téléphone.
 
