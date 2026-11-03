@@ -1398,7 +1398,14 @@
     function ecranGerer() {
       var html = enTeteCap('Gérer les rencontres');
       if (!donnees.rencontres.length) return html + '<div class="vide">Aucune rencontre à venir.</div></div>';
-      html += parJour(donnees.rencontres).map(function (j) {
+      if (donnees.equipes.indexOf(filtreEquipe) === -1) filtreEquipe = '';
+      html += '<div class="filtres"><button data-filtre-equipe=""' + (filtreEquipe ? '' : ' class="choisi"') + '>Toutes</button>' +
+        donnees.equipes.map(function (e) {
+          return '<button data-filtre-equipe="' + esc(e) + '"' + (e === filtreEquipe ? ' class="choisi"' : '') + '>' + pastilleEquipe(e) + '</button>';
+        }).join('') + '</div>';
+      var rs = donnees.rencontres.filter(function (r) { return !filtreEquipe || r.equipe === filtreEquipe; });
+      if (!rs.length) return html + '<div class="vide">Aucune rencontre à venir pour ' + esc(filtreEquipe) + '.</div></div>';
+      html += parJour(rs).map(function (j) {
         return '<div class="carte"><p class="jour">' + esc(dateLongue(j.date)) + '</p>' + j.rencontres.map(function (r) {
           var nb = Object.keys(donnees.reponses[r.id] || {}).length;
           return '<div class="rencontre ' + classeEquipe(r.equipe) + '"><div class="match">' + titreMatch(r) + '</div>' +
