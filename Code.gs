@@ -686,6 +686,7 @@ function importerJoueurs(jeton, joueurs, supprimer) {
 // Ignoré si un joueur a déjà ce nom ou cette licence.
 var JOUEURS_A_AJOUTER = [
   { nom: 'Quentin S', classement: 'NC', licence: '9125985 Y' },
+  { nom: 'Anthonin M', classement: '40', licence: '0717900 A' },
 ];
 
 function ajouterJoueursUneFois_() {
