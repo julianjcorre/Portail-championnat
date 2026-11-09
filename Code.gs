@@ -717,6 +717,68 @@ function ajouterJoueursUneFois_() {
   }
 }
 
+// Licences et classements relevés une fois sur l'export FFT « Liste des adhérents » du 09/11/2026
+// (hommes adultes du club ; mêmes règles que l'import 📥 Liste FFT : seuls nom, licence et classement
+// sont repris ici, jamais adresse / téléphone / date de naissance). Ne met à jour que les joueurs déjà
+// présents dans l'onglet Joueurs (retrouvés par leur nom) : n'ajoute personne de nouveau.
+var LICENCES_A_IMPORTER = [
+  { nom: 'Jacques B', licence: '9466127 T', classement: '40' },
+  { nom: 'Cédric C', licence: '6177519 U', classement: 'NC' },
+  { nom: 'Fabien C', licence: '7362942 X', classement: '30/3' },
+  { nom: 'Julian C', licence: '0198457 N', classement: '30/1' },
+  { nom: 'Pierre D', licence: '1355779 X', classement: '30/1' },
+  { nom: 'Alexandre G', licence: '2866450 F', classement: 'NC' },
+  { nom: 'Emmanuel G', licence: '1198167 E', classement: '30/3' },
+  { nom: 'Adrien G', licence: '4138527 Y', classement: '30/3' },
+  { nom: 'Florent G', licence: '3963761 K', classement: '30' },
+  { nom: 'Alexis H', licence: '2596557 U', classement: '40' },
+  { nom: 'Matthieu J', licence: '4030840 X', classement: '30/1' },
+  { nom: 'Camille K', licence: '2912429 H', classement: 'NC' },
+  { nom: 'Adem K', licence: '3598139 V', classement: '40' },
+  { nom: 'Johann L', licence: '9269783 A', classement: '30' },
+  { nom: 'Samy L', licence: '5911470 K', classement: '30/4' },
+  { nom: 'Bruno M', licence: '9126011 B', classement: 'NC' },
+  { nom: 'Sofiane M', licence: '1931054 W', classement: 'NC' },
+  { nom: 'Julien M', licence: '1198169 G', classement: '30/3' },
+  { nom: 'Sylvain P', licence: '7882502 L', classement: '30/2' },
+  { nom: 'Nicolas P', licence: '2912430 J', classement: '30/4' },
+  { nom: 'Thomas P', licence: '0467918 F', classement: '40' },
+  { nom: 'Xavier P', licence: '5742413 C', classement: '30/5' },
+  { nom: 'Anthony P', licence: '3266667 Z', classement: '30/1' },
+  { nom: 'Pierre P', licence: '3598148 E', classement: 'NC' },
+  { nom: 'Jonathan R', licence: '4331409 C', classement: 'NC' },
+  { nom: 'Mathéo R', licence: '3711504 T', classement: 'NC' },
+  { nom: 'Quentin S', licence: '9125985 Y', classement: 'NC' },
+  { nom: 'Jacky Y', licence: '5631119 F', classement: '30/3' },
+];
+
+/** Met à jour licence (+ classement) des joueurs de LICENCES_A_IMPORTER déjà présents dans l'onglet Joueurs. */
+function importerLicencesUneFois_() {
+  var props = PropertiesService.getScriptProperties();
+  var cle = function (j) { return 'licence_importee_2026_11_09_' + j.licence; };
+  var restants = LICENCES_A_IMPORTER.filter(function (j) { return !props.getProperty(cle(j)); });
+  if (!restants.length) return;
+  var verrou = LockService.getScriptLock();
+  verrou.waitLock(20000);
+  try {
+    var sheet = colonnesClassement_();
+    var maintenant = new Date();
+    restants.forEach(function (j) {
+      if (props.getProperty(cle(j))) return;
+      var lignes = lireLignes_(ONGLET_JOUEURS);
+      var noms = lignes.map(function (l) { return String(l[0]).trim(); });
+      var i = noms.map(cleNom_).indexOf(cleNom_(j.nom));
+      if (i !== -1) {
+        sheet.getRange(i + 2, 4, 1, 3).setValues([[j.classement, j.classement ? maintenant : '', j.licence]]);
+      }
+      props.setProperty(cle(j), maintenant.toISOString());
+    });
+    SpreadsheetApp.flush();
+  } finally {
+    verrou.releaseLock();
+  }
+}
+
 /**
  * Classement d'un joueur, saisi par un capitaine ('' pour l'effacer).
  * Remet aussi la date de vérification à aujourd'hui (même classement = « toujours bon »).
@@ -1434,6 +1496,7 @@ function getDonnees() {
   importerCalendrierUneFois_();
   nettoyerJoueursUneFois_();
   ajouterJoueursUneFois_();
+  importerLicencesUneFois_();
   dedoublonnerResultatsUneFois_();
   importerResultatsUneFois_();
   importerPoulesUneFois_();
@@ -1448,6 +1511,7 @@ function getDonnees() {
         equipes: String(l[1]).split(',').map(function (e) { return e.trim(); }).filter(String),
         classement: lireClassement_(l[3], tz),
         classementLe: l[4] instanceof Date ? Utilities.formatDate(l[4], tz, 'yyyy-MM-dd') : '',
+        licence: String(l[5] || '').trim(),
       };
     })
     .sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });

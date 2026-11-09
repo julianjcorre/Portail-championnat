@@ -493,7 +493,7 @@
     var filtreReponse = '';    // '' | 'Présent' | 'Absent' | 'aucune' : joueurs ayant au moins une case de ce type
     // 'accueil' (choix dispos / résultats) | 'matchs' | 'resultats' | 'cap' (accueil capitaines) | 'cap-form' | 'cap-gerer' | …
     // La page s'ouvre toujours sur l'accueil des joueurs ; le lien reçu par mail connecte seulement le capitaine.
-    var VUES_JOUEURS = ['accueil', 'matchs', 'resultats', 'classement'];
+    var VUES_JOUEURS = ['accueil', 'matchs', 'resultats', 'classement', 'licences'];
     var vue = 'accueil';
 
     // --- Outils ---
@@ -619,7 +619,7 @@
       zoneMoi.hidden = false;
       zoneMoi.innerHTML = esc(moi) + ' · <button id="changer">changer</button>';
       contenu.innerHTML = vue === 'matchs' ? ecranListe() : vue === 'resultats' ? ecranResultats() :
-        vue === 'classement' ? ecranClassementChampionnat() : ecranAccueil();
+        vue === 'classement' ? ecranClassementChampionnat() : vue === 'licences' ? ecranLicences() : ecranAccueil();
     }
 
     /** Même clé que côté serveur : sans accents, majuscules, points ni espaces. */
@@ -727,6 +727,7 @@
     function ecranAccueil() {
       var aVenir = donnees.rencontres.filter(function (r) { return !reponseDe(r.id, moi) && joueur(moi).equipes.indexOf(r.equipe) !== -1; }).length;
       var dernier = (donnees.resultats || [])[0];
+      var maLicence = (joueur(moi) || {}).licence;
       return '<div class="accueil"><h2>Salut ' + esc(moi.split(' ')[0]) + ' 👋</h2><p class="sous">Que veux-tu faire ?</p>' +
         '<div class="tuiles une">' +
           tuile('matchs', '📅', 'Mes disponibilités', aVenir ? compte(aVenir, 'match', 'matchs') + ' sans réponse de ta part' : 'Matchs à venir, je suis dispo / pas dispo') +
@@ -734,6 +735,7 @@
             ? 'Dernier : ' + dernier.equipe + ' – ' + dernier.adversaire + ' (' + scoreTexte(dernier) + ')'
             : 'Scores des rencontres et des parties') +
           tuile('classement', '🏆', 'Classement championnat', resumeClassement() || 'Classement des poules Hommes 1 et Hommes 2') +
+          tuile('licences', '🪪', 'Licences', maLicence ? 'Ta licence : ' + maLicence : 'Numéro de licence de chaque joueur') +
         '</div></div>' + piedCapitaines();
     }
 
@@ -781,6 +783,20 @@
     }
 
     function boutonAccueil() { return '<button class="retour" data-vue="accueil">← Accueil</button>'; }
+
+    // ======================= Licences =======================
+
+    /** Numéro FFT de chaque joueur : utile pour la feuille de match si l'équipe n'a pas été validée. */
+    function ecranLicences() {
+      var tries = donnees.joueurs.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
+      return '<div class="cap">' + boutonAccueil() + '<h2>🪪 Licences</h2>' +
+        '<p class="sous">Numéro de licence FFT de chaque joueur, à utiliser pour la feuille de match si l\'équipe n\'a pas été validée.</p></div>' +
+        '<div class="carte"><table class="classement"><thead><tr><th>Joueur</th><th>Licence</th></tr></thead><tbody>' +
+        tries.map(function (j) {
+          return '<tr' + (j.nom === moi ? ' class="nous"' : '') + '><td>' + esc(j.nom) + '</td>' +
+            '<td>' + (j.licence ? esc(j.licence) : '<span class="sous">—</span>') + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }
 
     // ======================= Résultats =======================
 
