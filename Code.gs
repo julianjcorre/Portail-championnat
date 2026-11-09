@@ -1139,6 +1139,16 @@ var RESULTATS_INITIAUX = [
       ['Double 1', 'Matthieu J / Jacky Y', '13 ; 15', 'Jean-François Fournier / Alexandre Bonnaud', '14 ; 15', '6-2 6-7(5) 10-5', 'Gagné'],
     ],
   },
+  {
+    date: '2026-11-08', equipe: 'Hommes 1', adversaire: 'Ste Hermine TC 1', lieu: 'Domicile',
+    parties: [
+      ['Simple 1', 'Johann L', '30', 'Timeo Morteau', '15/4', '3-6 0-6', 'Perdu'],
+      ['Simple 2', 'Anthony P', '30/1', 'Jean Christophe Martin', '15/5', '6-4 6-4', 'Gagné'],
+      ['Simple 3', 'Pierre D', '30/1', 'David Maudet', '30', '7-6(5) 6-3', 'Gagné'],
+      ['Simple 4', 'Julien M', '30/3', 'Gwenaël Simon', '30/1', '1-6 0-6', 'Perdu'],
+      ['Double 1', 'Pierre D / Anthony P', '13 ; 13', 'Timeo Morteau / Jean Christophe Martin', '10 ; 11', '4-6 4-6', 'Perdu'],
+    ],
+  },
 ];
 
 /** « 2026-10-18|Hommes 1 » pour une ligne de l'onglet Résultats. */
@@ -1316,6 +1326,14 @@ var POULES_INITIALES = [
     lignes: [[1, 'TC Bazogeais 2', 4, 1, 1], [2, 'St Etienne Palluau Tennis 1', 3, 1, 0], [3, 'TC Loulaysien 3', 3, 1, 0],
       [4, 'TC Bellevigny 2', 3, 1, 0], [5, 'Tennis Club Flavois 1', 2, 0, 2], [6, 'Tennis Rives de l\'Yon 1', 1, 0, 1],
       [7, 'TC Macheen 2', 0], [7, 'TC Mouchampais 2', 0]],
+  },
+  // 08/11/2026 : classement après la défaite 2-3 contre Ste Hermine TC 1 (poule C complète, relevé Ten'Up).
+  {
+    cle: '2026-11-08', remplacer: true,
+    equipe: 'Hommes 1', poule: 'Phase préliminaire – Poule C',
+    lignes: [[1, 'Ste Hermine TC 1', 6, 2, 0], [2, 'TC Les Achards 2', 4, 1, 1], [3, 'TC des Clouzeaux 2', 3, 1, 0],
+      [4, 'Talmont Tennis Club (TTC) 2', 3, 1, 0], [5, 'TC Bazogeais 1', 2, 0, 2], [6, 'TC de Montaigu 4', 1, 0, 1],
+      [7, 'Atlantique TC 85 3', 1, 0, 1], [8, 'TC de Montaigu 5', 0]],
   },
 ];
 
