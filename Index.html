@@ -475,6 +475,9 @@
     var jeton = jetonDuLien || lireJeton();
     var capitaine = null;      // adresse du capitaine connecté
     var capAdmin = false;      // le capitaine connecté est administrateur (choisit les capitaines)
+    var com = null;            // adresse connectée avec le rôle communication (📣 Espace com : consultation seule)
+    var verifEnCours = !!jeton; // connexion gardée sur le téléphone, en cours de vérification
+    var ongletCom = 'avenir';  // Espace com, écran Matchs & résultats : 'avenir' | 'resultats'
     var acces = null;          // liste des accès (écran 🛡️ Accès), chargée à l'ouverture
     var donneesCap = null;     // rencontres vues par les capitaines (avec nb de réponses)
     var edition = null;        // rencontre en cours de modification (null = création)
@@ -600,6 +603,13 @@
         contenu.innerHTML = ecranInstaller();
         return;
       }
+      // Rôle communication : pas de nom de joueur, seulement l'espace com (matchs, résultats, classement).
+      if (com && (VUES_JOUEURS.indexOf(vue) !== -1 || vue === 'com' || (vue.indexOf('cap') === 0 && vue !== 'cap-code'))) {
+        zoneMoi.hidden = false;
+        zoneMoi.textContent = '📣 Espace com';
+        contenu.innerHTML = vue === 'resultats' ? ecranComMatchs() : vue === 'classement' ? ecranClassementChampionnat() : ecranComAccueil();
+        return;
+      }
       if (VUES_JOUEURS.indexOf(vue) === -1) {
         zoneMoi.hidden = true;
         var defile = contenu.querySelector('.defile'), gauche = defile ? defile.scrollLeft : 0;
@@ -612,7 +622,8 @@
       if (!moi || !joueur(moi)) {
         moi = null;
         zoneMoi.hidden = true;
-        contenu.innerHTML = ecranQui();
+        // Connexion gardée en cours de vérification (peut-être l'espace com) : pas de liste des noms en attendant.
+        contenu.innerHTML = verifEnCours ? '<div class="chargement">Chargement…</div>' : ecranQui();
         return;
       }
 
@@ -656,7 +667,58 @@
 
     function piedCapitaines() {
       return (appliInstallee() ? '' : '<p class="pied"><button id="installer">📲 Installer l\'appli sur mon téléphone</button></p>') +
-        '<p class="pied"><button data-vue="cap">⚙️ Espace capitaines</button></p>';
+        '<p class="pied"><button data-vue="cap">⚙️ Espace capitaines</button></p>' +
+        '<p class="pied"><button data-vue="com">📣 Espace com</button></p>';
+    }
+
+    // ======================= Espace com (rôle communication, consultation seule) =======================
+
+    function ecranComAccueil() {
+      var prochain = donnees.rencontres[0], dernier = (donnees.resultats || [])[0];
+      var detail = [prochain ? 'Prochain : ' + dateCourte(prochain.date) + ' ' + prochain.equipe + ' – ' + (prochain.adversaire || 'adversaire à venir') : '',
+        dernier ? 'Dernier : ' + dernier.equipe + ' – ' + dernier.adversaire + ' (' + scoreTexte(dernier) + ')' : ''].filter(String).join(' · ');
+      return '<div class="accueil"><h2>📣 Espace com</h2><p class="sous">Connecté : ' + esc(com) + '</p>' +
+        (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
+        '<div class="tuiles une">' +
+          tuile('resultats', '🎾', 'Matchs & résultats', detail || 'Matchs à venir et scores des rencontres') +
+          tuile('classement', '🏆', 'Classement championnat', resumeClassement() || 'Classement des poules Hommes 1 et Hommes 2') +
+        '</div>' +
+        (appliInstallee() ? '' : '<p class="pied"><button id="installer">📲 Installer l\'appli sur mon téléphone</button></p>') +
+        '<p class="pied"><button data-vue="cap-code">🔑 Choisir ou changer mon code</button></p>' +
+        '<p class="pied"><button id="deconnexion-cap">Se déconnecter de l\'espace com</button></p></div>';
+    }
+
+    function filtresEquipe() {
+      if (donnees.equipes.indexOf(filtreEquipe) === -1) filtreEquipe = '';
+      return '<div class="filtres"><button data-filtre-equipe=""' + (filtreEquipe ? '' : ' class="choisi"') + '>Toutes</button>' +
+        donnees.equipes.map(function (e) {
+          return '<button data-filtre-equipe="' + esc(e) + '"' + (e === filtreEquipe ? ' class="choisi"' : '') + '>' + pastilleEquipe(e) + '</button>';
+        }).join('') + '</div>';
+    }
+
+    /** Matchs à venir et résultats dans le même écran (onglets), sans dispos ni boutons de réponse. */
+    function ecranComMatchs() {
+      var filtrer = function (liste) { return liste.filter(function (r) { return !filtreEquipe || r.equipe === filtreEquipe; }); };
+      var filtres = filtresEquipe();
+      var aVenir = filtrer(donnees.rencontres), resultats = filtrer(donnees.resultats || []);
+      var html = '<div class="cap">' + boutonAccueil() + '<h2>🎾 Matchs & résultats</h2></div>' +
+        '<div class="filtres">' + [['avenir', '📅 À venir', aVenir.length], ['resultats', '🎾 Résultats', resultats.length]].map(function (o) {
+          return '<button data-onglet-com="' + o[0] + '"' + (o[0] === ongletCom ? ' class="choisi"' : '') + '>' + o[1] + ' (' + o[2] + ')</button>';
+        }).join('') + '</div>' + filtres;
+      if (ongletCom === 'resultats') {
+        return html + (resultats.length ? resultats.map(carteResultat).join('') : '<div class="vide">Aucun résultat pour l\'instant.</div>');
+      }
+      if (!aVenir.length) return html + '<div class="vide">Aucune rencontre à venir.</div>';
+      return html + parJour(aVenir).map(function (j) {
+        return '<div class="carte"><p class="jour">' + esc(dateLongue(j.date)) + '</p>' + j.rencontres.map(function (r) {
+          return '<div class="rencontre ' + classeEquipe(r.equipe) + '">' +
+            '<div class="match">' + titreMatch(r) + '</div>' +
+            '<div class="ligne-info">' + esc(r.heure || 'Heure à venir') + '</div>' +
+            '<div class="badges">' + badgeStatut(r) + badgeLieu(r) + '</div>' +
+            (r.infos ? '<div class="infos">' + esc(r.infos) + '</div>' : '') +
+            blocComposition(r) + '</div>';
+        }).join('') + '</div>';
+      }).join('');
     }
 
     // ======================= Appli sur l'écran d'accueil =======================
@@ -1085,7 +1147,8 @@
     }
 
     function ecranCapitaine() {
-      if (!capitaine) return jeton ? '<div class="vide">Connexion…</div>' : ecranConnexionCap();
+      if (com && vue === 'cap-code') return ecranCodePerso();
+      if (vue === 'com' || !capitaine) return jeton ? '<div class="vide">Connexion…</div>' : ecranConnexionCap();
       if (vue === 'cap-form') return ecranFormRencontre();
       if (vue === 'cap-gerer') return ecranGerer();
       if (vue === 'cap-dispos') return ecranDispos();
@@ -1111,7 +1174,7 @@
           tuile('cap-poules', '🏆', 'Classement championnat', 'Recopier le classement Ten\'Up') +
           tuile('cap-classements', '🎾', 'Classements', classementsAVerifier() ? classementsAVerifier() + ' à vérifier' : 'Tous vérifiés ce mois-ci') +
           tuile('cap-joueurs', '👤', 'Joueurs', sansReponseTotal() ? sansReponseTotal() + ' sans réponse à tout' : 'Renommer, supprimer') +
-          (capAdmin ? tuile('cap-acces', '🛡️', 'Accès', 'Choisir les capitaines et les admins') : '') +
+          (capAdmin ? tuile('cap-acces', '🛡️', 'Accès', 'Capitaines, admins et communication') : '') +
           tuile('accueil', '🎾', 'Page des joueurs', 'Dispos et résultats') +
           (appliInstallee() ? '' : tuile('installer', '📲', 'Installer l\'appli', 'Icône sur ton téléphone')) +
         '</div>' +
@@ -1282,16 +1345,18 @@
     }
 
     function ecranConnexionCap() {
+      var espaceCom = vue === 'com', motCode = espaceCom ? 'code personnel' : 'code capitaine';
       var html = '<div class="cap"><button class="retour" data-vue="accueil">← Page des joueurs</button>' +
-        '<h2>⚙️ Espace capitaines</h2>' +
+        '<h2>' + (espaceCom ? '📣 Espace com' : '⚙️ Espace capitaines') + '</h2>' +
         '<p class="sous">' + (modeMail
-          ? 'Première connexion ou code oublié : tu reçois un code par mail, puis tu choisis ton code capitaine.'
-          : 'Réservé aux capitaines. Tape ton adresse et ton code capitaine. Ton téléphone s\'en souviendra ensuite.') + '</p>' +
+          ? 'Première connexion ou code oublié : tu reçois un code par mail, puis tu choisis ton ' + motCode + '.'
+          : (espaceCom ? 'Réservé à la communication du club (matchs, résultats, classement). ' : 'Réservé aux capitaines. ') +
+            'Tape ton adresse et ton ' + motCode + '. Ton téléphone s\'en souviendra ensuite.') + '</p>' +
         (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
         '<div class="champ"><label for="cap-email">Ton adresse e-mail</label>' +
         '<input id="cap-email" type="email" autocomplete="email" placeholder="prenom.nom@gmail.com" value="' + esc(capEmail) + '"></div>';
       if (!modeMail) {
-        return html + '<form id="form-cap-perso"><div class="champ"><label for="cap-perso">Ton code capitaine (6 chiffres)</label>' +
+        return html + '<form id="form-cap-perso"><div class="champ"><label for="cap-perso">Ton ' + motCode + ' (6 chiffres)</label>' +
           '<input id="cap-perso" type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="••••••"></div>' +
           '<button class="gros" type="submit">Me connecter</button></form>' +
           '<p class="ou">Première connexion ou code oublié ?</p>' +
@@ -1304,7 +1369,7 @@
             '<input id="cap-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" required></div>' +
             '<button class="gros" type="submit">Me connecter</button></form>'
           : '<button class="lien" id="deja-code">J\'ai déjà reçu un code par mail</button>') +
-        '<p class="ou"><button class="lien" id="mode-perso">J\'ai déjà mon code capitaine</button></p></div>';
+        '<p class="ou"><button class="lien" id="mode-perso">J\'ai déjà mon ' + motCode + '</button></p></div>';
     }
 
     // ======================= Accès : capitaines et administrateurs (admins) =======================
@@ -1331,33 +1396,38 @@
         .definirAcces(jeton, email, role);
     }
 
+    var LIBELLES_ROLES = { admin: '🛡️ Admin', capitaine: '⚙️ Capitaine', communication: '📣 Communication' };
+
     function ecranAcces() {
       var html = enTeteCap('🛡️ Accès') +
         '<p class="sous">Les <b>capitaines</b> gèrent rencontres, sélections et joueurs. Les <b>admins</b> ont les mêmes droits ' +
-        'et choisissent en plus qui a accès. Retirer quelqu\'un le déconnecte aussitôt sur tous ses téléphones.</p>';
+        'et choisissent en plus qui a accès. La <b>communication</b> voit seulement les matchs à venir, les résultats et le classement ' +
+        'championnat (« 📣 Espace com » en bas de la page), sans rien pouvoir modifier. ' +
+        'Retirer quelqu\'un le déconnecte aussitôt sur tous ses téléphones.</p>';
       if (!acces) return html + '<div class="vide">Chargement…</div></div>';
       html += '<div class="carte">' + acces.membres.map(function (m) {
         var fixe = m.proprietaire || m.moi;
         return '<div class="rencontre"><div class="match">' + esc(m.email) + '</div>' +
-          '<div class="ligne-info">' + (m.role === 'admin' ? '🛡️ Admin' : '⚙️ Capitaine') +
+          '<div class="ligne-info">' + (LIBELLES_ROLES[m.role] || m.role) +
           (m.proprietaire ? ' · compte du club' : '') + (m.moi ? ' · toi' : '') + '</div>' +
-          (fixe ? '' : '<div class="ligne-cap">' +
+          (fixe ? '' : '<div class="ligne-cap">' + (m.role === 'communication' ? '' :
             '<button data-acces-admin="' + esc(m.email) + '" data-acces-nouveau="' + (m.role === 'admin' ? 'capitaine' : 'admin') + '">' +
-              (m.role === 'admin' ? '⚙️ Plus admin' : '🛡️ Rendre admin') + '</button>' +
+              (m.role === 'admin' ? '⚙️ Plus admin' : '🛡️ Rendre admin') + '</button>') +
             '<button data-acces-retirer="' + esc(m.email) + '">✕ Retirer l\'accès</button></div>') +
           '</div>';
       }).join('') + '</div>';
       return html + '<form id="form-acces" class="carte"><h3>➕ Ajouter</h3>' +
         '<div class="champ"><label for="acces-email">Adresse e-mail</label>' +
         '<input id="acces-email" type="email" autocomplete="off" placeholder="prenom.nom@gmail.com" required></div>' +
-        '<label class="case-admin"><input id="acces-admin" type="checkbox"> 🛡️ Administrateur ' +
-          '<small>(sinon : capitaine)</small></label>' +
+        '<div class="champ"><label for="acces-role">Rôle</label><select id="acces-role">' +
+          ['capitaine', 'admin', 'communication'].map(function (r) { return '<option value="' + r + '">' + LIBELLES_ROLES[r] + '</option>'; }).join('') +
+        '</select></div>' +
         '<button class="gros" type="submit">Donner l\'accès</button>' +
-        '<p class="sous">Ensuite, la personne se connecte avec « ⚙️ Espace capitaines » → « Recevoir un code par mail ».</p></form></div>';
+        '<p class="sous">Ensuite, la personne se connecte avec « ⚙️ Espace capitaines » (ou « 📣 Espace com ») → « Recevoir un code par mail ».</p></form></div>';
     }
 
     function ecranCodePerso() {
-      return enTeteCap('🔑 Mon code capitaine') +
+      return enTeteCap(com ? '🔑 Mon code personnel' : '🔑 Mon code capitaine', com ? 'accueil' : 'cap', com ? 'Espace com' : '') +
         '<p class="sous">Choisis 6 chiffres. La prochaine fois (nouveau téléphone, après une déconnexion), ' +
         'tu taperas ton adresse et ce code, sans attendre de mail. Garde-le pour toi.</p>' +
         '<form id="form-code-perso"><div class="champ"><label for="code-perso-1">Ton nouveau code (6 chiffres)</label>' +
@@ -1365,7 +1435,7 @@
         '<div class="champ"><label for="code-perso-2">Tape-le une 2e fois</label>' +
         '<input id="code-perso-2" class="secret" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="••••••"></div>' +
         '<button class="gros" type="submit">Enregistrer mon code</button></form>' +
-        '<button class="gros second" data-vue="cap">Plus tard</button></div>';
+        '<button class="gros second" data-vue="' + (com ? 'accueil' : 'cap') + '">Plus tard</button></div>';
     }
 
     function ecranFormRencontre() {
@@ -1966,21 +2036,32 @@
       if (!jeton) return;
       serveur()
         .withSuccessHandler(function (info) {
-          capitaine = info.email;
-          capAdmin = !!info.admin;
-          if (jetonDuLien) afficherInfo('Connecté comme capitaine (' + capitaine + '). L\'espace capitaines est sous ⚙️ en haut à droite.');
+          verifEnCours = false;
+          appliquerRole(info);
+          if (jetonDuLien) afficherInfo(com ? 'Connexion à l\'espace com réussie (' + com + ').'
+            : 'Connecté comme capitaine (' + capitaine + '). L\'espace capitaines est sous ⚙️ en haut à droite.');
           rendre();
         })
         .withFailureHandler(function () {
+          verifEnCours = false;
           deconnexionCap();
+          rendre();
           if (VUES_JOUEURS.indexOf(vue) === -1) { messageCap = 'Ce lien n\'est plus valable : redemande un lien de connexion.'; rendre(); }
         })
         .infoCapitaine(jeton);
     }
 
+    /** Capitaine / admin (espace capitaines) ou communication (espace com). */
+    function appliquerRole(info) {
+      com = info.role === 'communication' ? info.email : null;
+      capitaine = com ? null : info.email;
+      capAdmin = !com && !!info.admin;
+    }
+
     function deconnexionCap() {
       capitaine = null;
       capAdmin = false;
+      com = null;
       acces = null;
       jeton = '';
       ecrireJeton('');
@@ -2053,6 +2134,9 @@
         filtreEquipe = cible.getAttribute('data-filtre-equipe');
         try { filtreEquipe ? localStorage.setItem(CLE_FILTRE_EQUIPE, filtreEquipe) : localStorage.removeItem(CLE_FILTRE_EQUIPE); } catch (e) {}
         rendre();
+      } else if (cible.hasAttribute('data-onglet-com')) {
+        ongletCom = cible.getAttribute('data-onglet-com');
+        rendre();
       } else if (cible.hasAttribute('data-filtre-reponse')) {
         filtreReponse = cible.getAttribute('data-filtre-reponse');
         lignesFigees = null;
@@ -2086,8 +2170,8 @@
         changerAcces(emailRole, nouveauRole, emailRole + (nouveauRole === 'admin' ? ' est maintenant admin.' : ' n\'est plus admin (reste capitaine).'));
       } else if (cible.hasAttribute('data-acces-retirer')) {
         var emailRetire = cible.getAttribute('data-acces-retirer');
-        if (!confirm('Retirer l\'accès de ' + emailRetire + ' ? Il ne pourra plus ouvrir l\'espace capitaines.')) return;
-        changerAcces(emailRetire, '', emailRetire + ' n\'a plus accès à l\'espace capitaines.');
+        if (!confirm('Retirer l\'accès de ' + emailRetire + ' ? Cette adresse ne pourra plus se connecter.')) return;
+        changerAcces(emailRetire, '', emailRetire + ' n\'a plus d\'accès.');
       } else if (cible.id === 'deconnexion-cap') {
         serveur().deconnecterCapitaine(jeton);
         deconnexionCap();
@@ -2194,8 +2278,8 @@
         b4.disabled = true;
         serveur()
           .withSuccessHandler(function () {
-            messageCap = 'Code capitaine enregistré. La prochaine fois, tape ton adresse et ce code.';
-            allerA('cap', true);
+            messageCap = (com ? 'Code' : 'Code capitaine') + ' enregistré. La prochaine fois, tape ton adresse et ce code.';
+            allerA(com ? 'accueil' : 'cap', true);
           })
           .withFailureHandler(function (err) {
             b4.disabled = false;
@@ -2247,9 +2331,9 @@
       if (e.target.id === 'form-acces') {
         e.preventDefault();
         var emailAjout = document.getElementById('acces-email').value.trim().toLowerCase();
-        var roleAjout = document.getElementById('acces-admin').checked ? 'admin' : 'capitaine';
+        var roleAjout = document.getElementById('acces-role').value;
         if (!emailAjout) { afficherErreur('Tape l\'adresse e-mail.'); return; }
-        changerAcces(emailAjout, roleAjout, emailAjout + ' a maintenant accès comme ' + (roleAjout === 'admin' ? 'admin.' : 'capitaine.'));
+        changerAcces(emailAjout, roleAjout, emailAjout + ' a maintenant accès comme ' + roleAjout + '.');
         return;
       }
       if (e.target.id === 'form-ajout-joueur') {
@@ -2273,7 +2357,11 @@
       ecrireJeton(jeton);
       messageCap = '';
       serveur()
-        .withSuccessHandler(function (info) { capitaine = info.email; capAdmin = !!info.admin; allerA(ecran); })
+        .withSuccessHandler(function (info) {
+          appliquerRole(info);
+          // Espace com : accueil com (ou choix du code personnel après une connexion par mail).
+          allerA(com && ecran !== 'cap-code' ? 'accueil' : ecran);
+        })
         .withFailureHandler(function (err) { afficherErreur(err.message); })
         .infoCapitaine(jeton);
     }

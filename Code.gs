@@ -33,6 +33,12 @@ var CAPITAINES = [
 var ADMINS = [
   'julian.jcorre@gmail.com',
 ];
+// Rôle « communication » : connexion par « 📣 Espace com » (bas de la page), consultation seule
+// des matchs à venir, des résultats et du classement championnat. Pas de nom dans la liste des joueurs.
+// Liste de départ, utilisée tant qu'aucun admin n'a changé les accès « communication » dans 🛡️ Accès.
+var COMMUNICATION = [
+  'guerymaeva@gmail.com',
+];
 
 var NOM_CLUB = 'TC Bazoges';
 
@@ -376,14 +382,21 @@ function enMinuscules_(liste) {
   return liste.map(function (e) { return String(e).trim().toLowerCase(); }).filter(String);
 }
 
-/** { capitaines: [...], admins: [...] } : propriétés du script, sinon les listes en haut du fichier. */
+/**
+ * { capitaines: [...], admins: [...], communication: [...] } : propriétés du script, sinon les listes en haut du fichier.
+ * (Liste « communication » absente des propriétés, enregistrées avant ce rôle : liste COMMUNICATION.)
+ */
 function lireAcces_() {
   var brut = PropertiesService.getScriptProperties().getProperty('acces');
   var acces = brut ? JSON.parse(brut) : { capitaines: CAPITAINES, admins: ADMINS };
   var admins = enMinuscules_(acces.admins || []);
+  var capitaines = enMinuscules_(acces.capitaines || []).filter(function (e) { return admins.indexOf(e) === -1; });
   return {
     admins: admins,
-    capitaines: enMinuscules_(acces.capitaines || []).filter(function (e) { return admins.indexOf(e) === -1; }),
+    capitaines: capitaines,
+    communication: enMinuscules_(acces.communication || COMMUNICATION).filter(function (e) {
+      return admins.indexOf(e) === -1 && capitaines.indexOf(e) === -1;
+    }),
   };
 }
 
@@ -396,6 +409,19 @@ function adresseProprietaire_() {
 function adressesCapitaines_() {
   var acces = lireAcces_(), proprietaire = adresseProprietaire_();
   return acces.capitaines.concat(acces.admins, proprietaire ? [proprietaire] : []);
+}
+
+/** Adresses qui peuvent se connecter : capitaines, admins, propriétaire et rôle communication. */
+function adressesConnexion_() {
+  return adressesCapitaines_().concat(lireAcces_().communication);
+}
+
+/** 'admin', 'capitaine', 'communication' ou '' (aucun accès). */
+function roleDe_(email) {
+  if (adressesAdmins_().indexOf(email) !== -1) return 'admin';
+  if (adressesCapitaines_().indexOf(email) !== -1) return 'capitaine';
+  if (lireAcces_().communication.indexOf(email) !== -1) return 'communication';
+  return '';
 }
 
 function adressesAdmins_() {
@@ -418,19 +444,20 @@ function getAcces(jeton) {
   if (proprietaire) membres.push({ email: proprietaire, role: 'admin', proprietaire: true });
   acces.admins.forEach(function (e) { if (e !== proprietaire) membres.push({ email: e, role: 'admin' }); });
   acces.capitaines.forEach(function (e) { if (e !== proprietaire) membres.push({ email: e, role: 'capitaine' }); });
+  acces.communication.forEach(function (e) { if (e !== proprietaire) membres.push({ email: e, role: 'communication' }); });
   membres.forEach(function (m) { m.moi = m.email === moi; });
   return { membres: membres };
 }
 
 /**
- * Donne un rôle à une adresse : 'admin', 'capitaine', ou '' pour lui retirer tout accès
+ * Donne un rôle à une adresse : 'admin', 'capitaine', 'communication', ou '' pour lui retirer tout accès
  * (ses connexions en cours et son code capitaine sont effacés). Renvoie la nouvelle liste.
  */
 function definirAcces(jeton, adresse, role) {
   var moi = verifierAdmin_(jeton);
   var email = String(adresse || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Adresse e-mail invalide.');
-  if (['admin', 'capitaine', ''].indexOf(role) === -1) throw new Error('Rôle inconnu.');
+  if (['admin', 'capitaine', 'communication', ''].indexOf(role) === -1) throw new Error('Rôle inconnu.');
   if (email === adresseProprietaire_()) throw new Error('Le compte du club (propriétaire de la Sheet) reste toujours administrateur.');
   if (email === moi) throw new Error('Tu ne peux pas changer ton propre accès : demande à un autre administrateur.');
   var verrou = LockService.getScriptLock();
@@ -440,8 +467,10 @@ function definirAcces(jeton, adresse, role) {
     var sans = function (liste) { return liste.filter(function (e) { return e !== email; }); };
     acces.admins = sans(acces.admins);
     acces.capitaines = sans(acces.capitaines);
+    acces.communication = sans(acces.communication);
     if (role === 'admin') acces.admins.push(email);
     if (role === 'capitaine') acces.capitaines.push(email);
+    if (role === 'communication') acces.communication.push(email);
     var props = PropertiesService.getScriptProperties();
     props.setProperty('acces', JSON.stringify(acces));
     if (!role) {
@@ -463,10 +492,12 @@ function definirAcces(jeton, adresse, role) {
 
 /**
  * Renvoie l'adresse du capitaine, ou lève une erreur.
+ * avecCommunication : accepte aussi le rôle communication (connexion, code personnel) ;
+ * sans lui, réservé aux capitaines et admins (toutes les fonctions de gestion).
  * Avec un jeton : connexion depuis la page. Sans jeton : compte Google
  * connecté (menus de la Sheet) ; vide pour un visiteur de la page publique.
  */
-function verifierCapitaine_(jeton) {
+function verifierCapitaine_(jeton, avecCommunication) {
   var email = '';
   if (jeton) {
     var brut = PropertiesService.getScriptProperties().getProperty('jeton_' + jeton);
@@ -475,7 +506,7 @@ function verifierCapitaine_(jeton) {
   } else {
     email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
   }
-  if (!email || adressesCapitaines_().indexOf(email) === -1) {
+  if (!email || (avecCommunication ? adressesConnexion_() : adressesCapitaines_()).indexOf(email) === -1) {
     throw new Error(jeton ? 'Connexion capitaine expirée : redemande un lien.' : 'Réservé aux capitaines.');
   }
   return email;
@@ -488,9 +519,11 @@ function verifierCapitaine_(jeton) {
 function demanderLienCapitaine(adresse) {
   var email = String(adresse || '').trim().toLowerCase();
   if (!email) throw new Error('Tape ton adresse e-mail.');
-  if (adressesCapitaines_().indexOf(email) === -1) {
-    throw new Error('L\'adresse ' + email + ' n\'est pas dans la liste des capitaines. Vérifie l\'orthographe.');
+  if (adressesConnexion_().indexOf(email) === -1) {
+    throw new Error('L\'adresse ' + email + ' n\'est pas dans la liste des accès. Vérifie l\'orthographe.');
   }
+  var com = roleDe_(email) === 'communication';
+  var espace = com ? 'espace com' : 'espace capitaines';
 
   var props = PropertiesService.getScriptProperties();
   var maintenant = new Date();
@@ -509,17 +542,17 @@ function demanderLienCapitaine(adresse) {
   MailApp.sendEmail({
     to: email,
     // Heure dans l'objet : Gmail ne regroupe pas le mail avec les demandes précédentes.
-    subject: NOM_CLUB + ' – Code de connexion capitaine (' + heure + ')',
-    body: 'Bonjour,\n\nPour te connecter à l\'espace capitaines du portail championnat :\n\n' +
+    subject: NOM_CLUB + ' – Code de connexion ' + (com ? 'espace com' : 'capitaine') + ' (' + heure + ')',
+    body: 'Bonjour,\n\nPour te connecter à l\'' + espace + ' du portail championnat :\n\n' +
       '• dans l\'appli installée sur ton téléphone, tape ce code : ' + code + ' (valable 30 minutes)\n\n' +
       '• ou ouvre ce lien dans ton navigateur :\n' + lien + '\n\n' +
-      'Le téléphone s\'en souviendra ensuite. Ne transfère pas ce mail : il donne accès à la gestion des rencontres.\n',
+      'Le téléphone s\'en souviendra ensuite. Ne transfère pas ce mail : il donne accès à ton ' + espace + '.\n',
     name: NOM_CLUB,
   });
   // Compté seulement une fois le mail réellement parti.
   props.setProperty(cleCompteur, String(envoyes + 1));
   console.log('Lien de connexion envoyé à ' + email);
-  return 'Mail envoyé à ' + email + ' (objet « ' + NOM_CLUB + ' – Code de connexion capitaine (' + heure + ') »). ' +
+  return 'Mail envoyé à ' + email + ' (objet « ' + NOM_CLUB + ' – Code de connexion ' + (com ? 'espace com' : 'capitaine') + ' (' + heure + ') »). ' +
     'Il arrive en 1 à 2 minutes ; regarde aussi Spam et Promotions. Tape le code du mail ci-dessous, ou ouvre son lien.';
 }
 
@@ -547,7 +580,7 @@ function validerCodeCapitaine(adresse, code) {
     throw new Error('Code incorrect. Vérifie le dernier mail reçu.');
   }
   props.deleteProperty('code_' + email);
-  verifierCapitaine_(info.jeton);
+  verifierCapitaine_(info.jeton, true);
   return { jeton: info.jeton };
 }
 
@@ -562,7 +595,7 @@ function brouillerCode_(sel, code) {
 
 /** Enregistre (ou remplace) le code capitaine du capitaine connecté. */
 function definirCodePerso(jeton, code) {
-  var email = verifierCapitaine_(jeton);
+  var email = verifierCapitaine_(jeton, true);
   code = String(code || '');
   if (!/^\d{6}$/.test(code)) throw new Error('Le code doit faire 6 chiffres.');
   if (/^(\d)\1{5}$/.test(code) || code === '123456' || code === '654321') {
@@ -578,21 +611,21 @@ function definirCodePerso(jeton, code) {
 function connexionCodePerso(adresse, code) {
   var email = String(adresse || '').trim().toLowerCase();
   if (!email) throw new Error('Tape ton adresse e-mail.');
-  if (adressesCapitaines_().indexOf(email) === -1) {
-    throw new Error('L\'adresse ' + email + ' n\'est pas dans la liste des capitaines. Vérifie l\'orthographe.');
+  if (adressesConnexion_().indexOf(email) === -1) {
+    throw new Error('L\'adresse ' + email + ' n\'est pas dans la liste des accès. Vérifie l\'orthographe.');
   }
   var verrou = LockService.getScriptLock();
   verrou.waitLock(10000);
   try {
     var props = PropertiesService.getScriptProperties();
     var brut = props.getProperty('code_perso_' + email);
-    if (!brut) throw new Error('PAS_DE_CODE: Pas encore de code capitaine pour cette adresse : reçois d\'abord un code par mail.');
+    if (!brut) throw new Error('PAS_DE_CODE: Pas encore de code personnel pour cette adresse : reçois d\'abord un code par mail.');
     var info = JSON.parse(brut);
     if (brouillerCode_(info.sel, String(code || '').replace(/\D/g, '')) !== info.empreinte) {
       info.essais++;
       if (info.essais >= MAX_ESSAIS_CODE_PERSO) {
         props.deleteProperty('code_perso_' + email);
-        throw new Error('PAS_DE_CODE: Trop d\'erreurs : ton code capitaine est effacé. Reçois un code par mail pour en choisir un nouveau.');
+        throw new Error('PAS_DE_CODE: Trop d\'erreurs : ton code personnel est effacé. Reçois un code par mail pour en choisir un nouveau.');
       }
       props.setProperty('code_perso_' + email, JSON.stringify(info));
       var reste = MAX_ESSAIS_CODE_PERSO - info.essais;
@@ -876,10 +909,11 @@ function definirSelection(jeton, idRencontre, nom, role) {
   return lireSelection_();
 }
 
-/** Adresse du capitaine connecté avec ce jeton (erreur si le jeton n'est plus valable). */
+/** Adresse et rôle de la personne connectée avec ce jeton (erreur si le jeton n'est plus valable). */
 function infoCapitaine(jeton) {
-  var email = verifierCapitaine_(jeton);
-  return { email: email, admin: adressesAdmins_().indexOf(email) !== -1 };
+  var email = verifierCapitaine_(jeton, true);
+  var role = roleDe_(email);
+  return { email: email, admin: role === 'admin', role: role };
 }
 
 function deconnecterCapitaine(jeton) {

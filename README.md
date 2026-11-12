@@ -36,7 +36,8 @@ Après une modification de `Index.html`, copier le fichier en `index.html` dans 
 Espace capitaines **dans la page des joueurs** (lien « ⚙️ Espace capitaines » en bas), sans passer par la Sheet. Réservé au compte du club (propriétaire de la Sheet) et aux adresses ayant un rôle :
 
 - **Capitaine** : tout l'espace capitaines (rencontres, sélection, joueurs, résultats…).
-- **Admin** : les mêmes droits, plus la vignette **🛡️ Accès** pour choisir qui est capitaine ou admin.
+- **Admin** : les mêmes droits, plus la vignette **🛡️ Accès** pour choisir qui est capitaine, admin ou communication.
+- **Communication** : consultation seule, par le lien « 📣 Espace com » en bas de la page (même connexion que les capitaines : adresse + code par mail, puis code personnel à 6 chiffres). Pas de nom dans la liste des joueurs : la page s'ouvre directement sur l'espace com, avec deux vignettes : **🎾 Matchs & résultats** (onglets « 📅 À venir » : date, heure, lieu, statut, ordre de jeu, sans les dispos ; et « 🎾 Résultats ») et **🏆 Classement championnat**. Aucune fonction de gestion ne l'accepte côté serveur.
 
 Liste de départ (en haut de `Code.gs`) :
 
@@ -45,8 +46,9 @@ Liste de départ (en haut de `Code.gs`) :
 | julian.jcorre@gmail.com | Admin (`ADMINS`) |
 | florent.guery1@gmail.com | Capitaine (`CAPITAINES`) |
 | jamin.matthieu85@gmail.com | Capitaine (`CAPITAINES`) |
+| guerymaeva@gmail.com | Communication (`COMMUNICATION`) |
 
-**🛡️ Accès** (admins seulement) : ajouter une adresse comme capitaine ou admin, le mettre administrateur ou non (case « 🛡️ Administrateur » à l'ajout, boutons « 🛡️ Rendre admin » / « ⚙️ Plus admin » ensuite), ou « ✕ Retirer l'accès ». Retirer une adresse la déconnecte aussitôt sur tous ses téléphones (jetons effacés) et efface son code capitaine. Le compte du club reste toujours admin, et un admin ne peut pas changer son propre accès (pas de risque de se bloquer dehors). Dès le 1er changement fait dans 🛡️ Accès, la liste est gardée dans les propriétés du script (clé `acces`) et les listes `CAPITAINES` / `ADMINS` de `Code.gs` ne servent plus.
+**🛡️ Accès** (admins seulement) : ajouter une adresse comme capitaine, admin ou communication (menu « Rôle »), le mettre administrateur ou non (case « 🛡️ Administrateur » à l'ajout, boutons « 🛡️ Rendre admin » / « ⚙️ Plus admin » ensuite), ou « ✕ Retirer l'accès ». Retirer une adresse la déconnecte aussitôt sur tous ses téléphones (jetons effacés) et efface son code capitaine. Le compte du club reste toujours admin, et un admin ne peut pas changer son propre accès (pas de risque de se bloquer dehors). Dès le 1er changement fait dans 🛡️ Accès, la liste est gardée dans les propriétés du script (clé `acces`) et les listes `CAPITAINES` / `ADMINS` / `COMMUNICATION` de `Code.gs` ne servent plus (sauf `COMMUNICATION` tant que la liste gardée n'a pas encore de rôle communication enregistré).
 
 Connexion :
 1. « ⚙️ Espace capitaines » → taper son adresse e-mail → « Recevoir mon lien de connexion ».
