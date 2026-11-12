@@ -604,10 +604,12 @@
         return;
       }
       // Rôle communication : pas de nom de joueur, seulement l'espace com (matchs, résultats, classement).
-      if (com && (VUES_JOUEURS.indexOf(vue) !== -1 || vue === 'com' || (vue.indexOf('cap') === 0 && vue !== 'cap-code'))) {
-        zoneMoi.hidden = false;
+      // Les capitaines et admins peuvent aussi ouvrir l'espace com (aperçu de ce que voit la communication).
+      var vueCom = vue === 'com' || vue.indexOf('com-') === 0;
+      if ((com && (VUES_JOUEURS.indexOf(vue) !== -1 || vueCom || (vue.indexOf('cap') === 0 && vue !== 'cap-code'))) || (capitaine && vueCom)) {
+        zoneMoi.hidden = !com;
         zoneMoi.textContent = '📣 Espace com';
-        contenu.innerHTML = vue === 'resultats' ? ecranComMatchs() : vue === 'classement' ? ecranClassementChampionnat() : ecranComAccueil();
+        contenu.innerHTML = vue === 'com-matchs' ? ecranComMatchs() : vue === 'com-classement' ? ecranClassementChampionnat('com') : ecranComAccueil();
         return;
       }
       if (VUES_JOUEURS.indexOf(vue) === -1) {
@@ -677,12 +679,17 @@
       var prochain = donnees.rencontres[0], dernier = (donnees.resultats || [])[0];
       var detail = [prochain ? 'Prochain : ' + dateCourte(prochain.date) + ' ' + prochain.equipe + ' – ' + (prochain.adversaire || 'adversaire à venir') : '',
         dernier ? 'Dernier : ' + dernier.equipe + ' – ' + dernier.adversaire + ' (' + scoreTexte(dernier) + ')' : ''].filter(String).join(' · ');
+      var tuiles = '<div class="tuiles une">' +
+          tuile('com-matchs', '🎾', 'Matchs & résultats', detail || 'Matchs à venir et scores des rencontres') +
+          tuile('com-classement', '🏆', 'Classement championnat', resumeClassement() || 'Classement des poules Hommes 1 et Hommes 2') +
+        '</div>';
+      if (!com) {
+        // Capitaine ou admin : aperçu de l'espace com.
+        return '<div class="accueil"><button class="retour" data-vue="accueil">← Page des joueurs</button><h2>📣 Espace com</h2>' +
+          '<p class="sous">Aperçu : c\'est ce que voit la communication (consultation seule).</p>' + tuiles + '</div>';
+      }
       return '<div class="accueil"><h2>📣 Espace com</h2><p class="sous">Connecté : ' + esc(com) + '</p>' +
-        (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') +
-        '<div class="tuiles une">' +
-          tuile('resultats', '🎾', 'Matchs & résultats', detail || 'Matchs à venir et scores des rencontres') +
-          tuile('classement', '🏆', 'Classement championnat', resumeClassement() || 'Classement des poules Hommes 1 et Hommes 2') +
-        '</div>' +
+        (messageCap ? '<div class="info">' + esc(messageCap) + '</div>' : '') + tuiles +
         (appliInstallee() ? '' : '<p class="pied"><button id="installer">📲 Installer l\'appli sur mon téléphone</button></p>') +
         '<p class="pied"><button data-vue="cap-code">🔑 Choisir ou changer mon code</button></p>' +
         '<p class="pied"><button id="deconnexion-cap">Se déconnecter de l\'espace com</button></p></div>';
@@ -701,7 +708,7 @@
       var filtrer = function (liste) { return liste.filter(function (r) { return !filtreEquipe || r.equipe === filtreEquipe; }); };
       var filtres = filtresEquipe();
       var aVenir = filtrer(donnees.rencontres), resultats = filtrer(donnees.resultats || []);
-      var html = '<div class="cap">' + boutonAccueil() + '<h2>🎾 Matchs & résultats</h2></div>' +
+      var html = '<div class="cap">' + boutonAccueil('com') + '<h2>🎾 Matchs & résultats</h2></div>' +
         '<div class="filtres">' + [['avenir', '📅 À venir', aVenir.length], ['resultats', '🎾 Résultats', resultats.length]].map(function (o) {
           return '<button data-onglet-com="' + o[0] + '"' + (o[0] === ongletCom ? ' class="choisi"' : '') + '>' + o[1] + ' (' + o[2] + ')</button>';
         }).join('') + '</div>' + filtres;
@@ -822,9 +829,9 @@
       return '<span class="v">' + v + 'V</span> <span class="d">' + d + 'D</span>';
     }
 
-    function ecranClassementChampionnat() {
+    function ecranClassementChampionnat(retour) {
       var poules = donnees.poules || {};
-      return '<div class="cap">' + boutonAccueil() + '<h2>🏆 Classement championnat</h2></div>' +
+      return '<div class="cap">' + boutonAccueil(retour) + '<h2>🏆 Classement championnat</h2></div>' +
         donnees.equipes.map(function (e) {
           var p = poules[e];
           var html = '<div class="carte"><p class="jour">' + pastilleEquipe(e) + '</p>';
@@ -844,7 +851,7 @@
         }).join('');
     }
 
-    function boutonAccueil() { return '<button class="retour" data-vue="accueil">← Accueil</button>'; }
+    function boutonAccueil(vueRetour) { return '<button class="retour" data-vue="' + (vueRetour || 'accueil') + '">← Accueil</button>'; }
 
     // ======================= Licences =======================
 
@@ -1148,7 +1155,7 @@
 
     function ecranCapitaine() {
       if (com && vue === 'cap-code') return ecranCodePerso();
-      if (vue === 'com' || !capitaine) return jeton ? '<div class="vide">Connexion…</div>' : ecranConnexionCap();
+      if (vue === 'com' || !capitaine) return jeton && verifEnCours ? '<div class="vide">Connexion…</div>' : ecranConnexionCap();
       if (vue === 'cap-form') return ecranFormRencontre();
       if (vue === 'cap-gerer') return ecranGerer();
       if (vue === 'cap-dispos') return ecranDispos();
