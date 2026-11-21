@@ -4,6 +4,7 @@ Une ligne par décision ou modification, la plus récente en haut. Format : date
 
 | Date | Type | Quoi | Pourquoi |
 | --- | --- | --- | --- |
+| 21/11/2026 | Modification | **Étape 0.2** : double vérification activée et 2e membre invité sur le compte Cloudflare (adresse du club). | Le compte ne dépend pas d'une seule personne. |
 | 21/11/2026 | Modification | **Étape 0.1** : compte Cloudflare créé. | Début de la préparation. |
 | 21/11/2026 | Décision | Les mails de la **version de test** partent aussi du compte Gmail du club, avec « [TEST] » dans l'objet et envoyés seulement aux testeurs. | Un seul compte à gérer, sans risque de confusion pour les capitaines. |
 | 21/11/2026 | Modification | Ajout du schéma technique de la V2 (`schema-technique-v2.svg`). | Voir d'un coup d'œil qui parle à qui. |
