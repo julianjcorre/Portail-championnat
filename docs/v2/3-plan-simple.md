@@ -12,6 +12,10 @@
 
 Les clients (les joueurs) passent leur commande de la même façon : « Je suis dispo ». Ils ne voient pas qu'on a changé de cuisinier et de cahier. Ils remarquent seulement que c'est servi beaucoup plus vite.
 
+Schéma technique : [schema-technique-v2.svg](schema-technique-v2.svg)
+
+![Schéma technique V2](schema-technique-v2.svg)
+
 ## Les étapes
 
 ### Étape 0 – Préparer la cuisine

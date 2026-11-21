@@ -4,6 +4,7 @@ Une ligne par décision ou modification, la plus récente en haut. Format : date
 
 | Date | Type | Quoi | Pourquoi |
 | --- | --- | --- | --- |
+| 21/11/2026 | Modification | Ajout du schéma technique de la V2 (`schema-technique-v2.svg`). | Voir d'un coup d'œil qui parle à qui. |
 | 21/11/2026 | Décision | Plan de la V2 en 8 étapes (`3-plan-simple.md`) : préparer, base de données, serveur, copie des données, page d'essai, tests, répétition, bascule, surveillance. | Avoir une feuille de route claire avant de construire. |
 | 21/11/2026 | Décision | **Partie payante mise de côté.** Priorité au bon fonctionnement complet de l'appli pour le club. | Une chose à la fois : d'abord une appli fiable. |
 | 21/11/2026 | Modification | Création du dossier `docs/v2` : photo de la v1, projet 2.0, ce journal. | Garder une trace de tout et pouvoir comparer avec la v1. |
