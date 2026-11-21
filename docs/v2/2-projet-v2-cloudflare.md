@@ -3,8 +3,9 @@
 Synthèse des discussions du 16 au 21/11/2026. Rien n'est encore construit : c'est la feuille de route.
 
 ## Objectif
-1. **Maintenant** : une appli plus rapide pour le TC Bazoges, tout pilotée depuis GitHub, sans Google Sheet ni Apps Script.
-2. **Plus tard (pas lancé)** : une appli neutre que n'importe quel club installe seul, gratuite puis en partie payante.
+**Priorité absolue : le bon fonctionnement complet de l'appli pour le TC Bazoges.** Une appli plus rapide, fiable, tout pilotée depuis GitHub, sans Google Sheet ni Apps Script.
+
+Hors sujet pour l'instant : toute partie payante. La version multi-clubs reste une idée pour plus tard.
 
 ## Décisions prises
 
@@ -72,13 +73,8 @@ Gain attendu : environ 0,1 à 0,3 s par action au lieu de 1 à 3 s, plus de file
 - Réglages du club dans la base, plus rien d'écrit en dur.
 - Aide intégrée, export Excel, sauvegardes, quelqu'un d'autre capable de reprendre.
 
-**Modèle économique envisagé : gratuit puis freemium**
-- Joueurs : toujours gratuit, sans compte.
-- Club gratuit : rencontres, dispos, une équipe, un capitaine.
-- Club payant (~49 € par saison) : plusieurs équipes et capitaines, sélection et ordre de jeu, tableau des dispos, import FFT, résultats, classements, agenda.
-- Règles : export toujours possible, jamais de coupure en pleine phase, paiement par virement avec facture accepté.
-- Question ouverte : l'argent doit-il couvrir les frais ou devenir un revenu ?
-- À prévoir si on vend : statut (micro-entreprise), CGU, RGPD, pas de marques FFT / Ten'Up.
+**Partie payante : mise de côté (21/11/2026)**
+- Plus d'actualité tant que l'appli ne fonctionne pas parfaitement pour le club. L'idée discutée (gratuit puis payant) reste notée dans `HISTORIQUE.md` au 18/11/2026.
 
 **Autres pistes**
 - Accélérer la v1 sans migrer (données gardées sur le téléphone, suppression des vérifications « une fois », `CacheService`) : proposé, mis de côté pour l'instant.

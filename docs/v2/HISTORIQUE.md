@@ -4,6 +4,7 @@ Une ligne par décision ou modification, la plus récente en haut. Format : date
 
 | Date | Type | Quoi | Pourquoi |
 | --- | --- | --- | --- |
+| 21/11/2026 | Décision | **Partie payante mise de côté.** Priorité au bon fonctionnement complet de l'appli pour le club. | Une chose à la fois : d'abord une appli fiable. |
 | 21/11/2026 | Modification | Création du dossier `docs/v2` : photo de la v1, projet 2.0, ce journal. | Garder une trace de tout et pouvoir comparer avec la v1. |
 | 20/11/2026 | Décision | Compte Cloudflare au nom du club, double vérification, 2 responsables. Code de la 2.0 dans `TCBazogeais`. | Que l'outil ne dépende pas d'une seule personne. |
 | 20/11/2026 | Décision | **Cloudflare** retenu (Workers + D1) après comparatif avec Supabase, Firebase, Netlify + Neon, serveur loué. | Gratuit, jamais en pause, rapide, rien à entretenir. |
