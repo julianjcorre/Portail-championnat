@@ -61,7 +61,7 @@ Gain attendu : environ 0,1 à 0,3 s par action au lieu de 1 à 3 s, plus de file
 - À vérifier : réponses, sélection, résultats, classements, import FFT, connexion capitaine, rôles, et la vitesse.
 
 ## Prochaines étapes
-- [ ] Créer le compte Cloudflare (adresse du club, double vérification, 2e responsable).
+- [x] Créer le compte Cloudflare (adresse du club, double vérification, 2e responsable).
 - [ ] Créer le dépôt de la 2.0 dans `TCBazogeais`.
 - [ ] Rédiger le document de conception détaillé de la base de test.
 - [ ] Ajouter la clé d'accès Cloudflare dans les secrets GitHub.
