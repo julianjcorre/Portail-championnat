@@ -750,7 +750,7 @@ function ajouterJoueursUneFois_() {
   }
 }
 
-// Licences et classements relevés une fois sur l'export FFT « Liste des adhérents » du 09/11/2026
+// Licences et classements relevés une fois sur l'export FFT « Liste des adhérents » (dernière mise à jour : export du 24/11/2026)
 // (hommes adultes du club ; mêmes règles que l'import 📥 Liste FFT : seuls nom, licence et classement
 // sont repris ici, jamais adresse / téléphone / date de naissance). Ne met à jour que les joueurs déjà
 // présents dans l'onglet Joueurs (retrouvés par leur nom) : n'ajoute personne de nouveau.
@@ -782,13 +782,14 @@ var LICENCES_A_IMPORTER = [
   { nom: 'Jonathan R', licence: '4331409 C', classement: 'NC' },
   { nom: 'Mathéo R', licence: '3711504 T', classement: 'NC' },
   { nom: 'Quentin S', licence: '9125985 Y', classement: 'NC' },
+  { nom: 'Anthonin M', licence: '0717900 A', classement: '40' },
   { nom: 'Jacky Y', licence: '5631119 F', classement: '30/3' },
 ];
 
 /** Met à jour licence (+ classement) des joueurs de LICENCES_A_IMPORTER déjà présents dans l'onglet Joueurs. */
 function importerLicencesUneFois_() {
   var props = PropertiesService.getScriptProperties();
-  var cle = function (j) { return 'licence_importee_2026_11_09_' + j.licence; };
+  var cle = function (j) { return 'licence_importee_2026_11_24_' + j.licence; };
   var restants = LICENCES_A_IMPORTER.filter(function (j) { return !props.getProperty(cle(j)); });
   if (!restants.length) return;
   var verrou = LockService.getScriptLock();
